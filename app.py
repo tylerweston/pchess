@@ -24,68 +24,85 @@ wish list:
 """
 
 from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+
 import chess
-import psycopg2
-from configparser import ConfigParser
+# import psycopg2
+# from configparser import ConfigParser
 # https://python-chess.readthedocs.io/en/latest/
 
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:password@localhost:5432/pchess"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 
-def config(filename='database.ini', section='postgresql'):
-    """
-    read config for postgres db from database.ini
-    """
-    # https://www.postgresqltutorial.com/postgresql-python/connect/
-    parser = ConfigParser()
-    parser.read(filename)
-
-    db ={}
-    if parser.has_section(section):
-        params = parser.items(section)
-        for param in params:
-            db[param[0]] = param[1]
-    else:
-        raise Exception(f"Section {section} not found in file {filename}")
-    return db
+class SingleGame(db.Model):
+    __tablename__ = 'single_game'
+    # We don't really care about the game a chess board belongs to, do we?!
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String())
+    boards = db.relationship("Chessboard")
 
 
-def connect():
-    """
-    connect to postgresql database
-    """
-    conn = None
-    try:
-        params = config()
+class Chessboard(db.Model):
+    __tablename__ = 'chessboard'
+    id = db.Column(db.Integer, primary_key=True)
+    board = db.Column(db.String())
+    parent_id = db.Column(db.Integer, db.ForeignKey('single_game.id'))
 
-        # do the connecting
-        print("Connecting to PostgreSQL db...")
-        conn = psycopg2.connect(**params)
 
-        # create cursor
-        cur = conn.cursor()
+@app.route('/new_game/<game_name>', methods=['POST'])
+def create_new_game(game_name):
+    # Create a new chessboard in the opening position
+    board = Chessboard(board=chess.STARTING_BOARD_FEN)
+    # Create a new game
+    game = SingleGame(name=game_name, boards=[board])
+    # Add the board and the game to our database
+    db.session.add(board)
+    db.session.add(game)
+    db.session.commit()
+    return f"Create new game named {game_name}"
 
-        # execute a stmt.
 
-        cur.execute("SELECT version()")
-        db_version = cur.fetchone()
-        print(f"PostgreSQL version: {db_version}")
+@app.route('/get_current_board')
+def get_current_board():
+    # returns a string representation of the currently active board
+    # cur_board = Chessboard.query.all()[-1]
+    # board = chess.Board(cur_board.board)
+    board = get_current_active_game()
+    #legal_moves = [str(move) for move in board.legal_moves]
+    legal_moves = get_legal_moves(board)
+    return {'board': str(board), 'possible_moves': legal_moves}
 
-        # close connection
-        cur.close()
-    except (Exception, psycopg2.DatabaseError) as error:
-        print(error)
-    finally:
-        if conn is not None:
-            conn.close()
-            print("Database connection closed")
+def get_current_active_game():
+    cur_board = Chessboard.query.all()[-1]
+    board = chess.Board(cur_board.board)
+    return board
+
+def get_legal_moves(board):
+    return [str(move) for move in board.legal_moves]
+
+@app.route('/make_move/<move>', methods=['POST'])
+def make_move(move):
+    curboard = get_current_active_game()
+    legal_moves = get_legal_moves(curboard)
+    if move not in legal_moves:
+        return "Invalid move!"
+    curboard.push_uci(move)
+    board = Chessboard(board=curboard.fen())
+    db.session.add(board)
+    db.session.commit()
+    return f"Made move {move}"
 
 
 @app.route('/')
 def hello_world():
-    connect()
-    return 'Hello World!'
+    # connect()
+    return 'Hello World! Changed version!'
 
 
 @app.route('/new_board')
@@ -95,13 +112,6 @@ def new_board():
     return {'board': str(new_board), 'possible_moves': legal_moves}
 
 
-@app.route('/make_move/<move>', methods=['POST'])
-def make_move(move):
-    # TODO: This call won't come from the front-end, it will come from the backend
-    # execute a move and return the new board and moves
-    return f"Executing move: {move}"
-
-
 if __name__ == '__main__':
 
-    app.run()
+    app.run(debug=True, host='0.0.0.0')
