@@ -24,39 +24,33 @@ wish list:
 """
 
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
+
 
 import chess
+
 # import psycopg2
 # from configparser import ConfigParser
 # https://python-chess.readthedocs.io/en/latest/
 
-
+# basic flask app setup
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:password@localhost:5432/pchess"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config[
+    "SQLALCHEMY_DATABASE_URI"
+] = "postgresql://postgres:password@localhost:5432/pchess"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# init db connection vis sqlalchemy
 db = SQLAlchemy(app)
+
+# init migration engine
 migrate = Migrate(app, db)
 
 
-class SingleGame(db.Model):
-    __tablename__ = 'single_game'
-    # We don't really care about the game a chess board belongs to, do we?!
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String())
-    boards = db.relationship("Chessboard")
-
-
-class Chessboard(db.Model):
-    __tablename__ = 'chessboard'
-    id = db.Column(db.Integer, primary_key=True)
-    board = db.Column(db.String())
-    parent_id = db.Column(db.Integer, db.ForeignKey('single_game.id'))
-
-
-@app.route('/new_game/<game_name>', methods=['POST'])
+@app.route("/new_game/<game_name>", methods=["POST"])
 def create_new_game(game_name):
+    from models import Chessboard, SingleGame
     # Create a new chessboard in the opening position
     board = Chessboard(board=chess.STARTING_BOARD_FEN)
     # Create a new game
@@ -68,26 +62,33 @@ def create_new_game(game_name):
     return f"Create new game named {game_name}"
 
 
-@app.route('/get_current_board')
+@app.route("/get_current_board")
 def get_current_board():
     # returns a string representation of the currently active board
-    # cur_board = Chessboard.query.all()[-1]
-    # board = chess.Board(cur_board.board)
     board = get_current_active_game()
-    #legal_moves = [str(move) for move in board.legal_moves]
     legal_moves = get_legal_moves(board)
-    return {'board': str(board), 'possible_moves': legal_moves}
+    return {"board": str(board), "possible_moves": legal_moves}
+
 
 def get_current_active_game():
+    from models import Chessboard
+
     cur_board = Chessboard.query.all()[-1]
     board = chess.Board(cur_board.board)
     return board
 
+
 def get_legal_moves(board):
     return [str(move) for move in board.legal_moves]
 
-@app.route('/make_move/<move>', methods=['POST'])
+
+@app.route("/make_move/<move>", methods=["POST"])
 def make_move(move):
+    from models import Chessboard, SingleGame
+    # we want to get the current active board to make sure we can
+    # grab the proper parent from our board as well!
+    # so that way we can keep a series of boards organized into
+    # their proper games!
     curboard = get_current_active_game()
     legal_moves = get_legal_moves(curboard)
     if move not in legal_moves:
@@ -99,19 +100,10 @@ def make_move(move):
     return f"Made move {move}"
 
 
-@app.route('/')
+@app.route("/")
 def hello_world():
-    # connect()
-    return 'Hello World! Changed version!'
+    return "pchess v0.01 - Tyler Weston 2020"
 
 
-@app.route('/new_board')
-def new_board():
-    new_board = chess.Board()
-    legal_moves = [str(move) for move in new_board.legal_moves]
-    return {'board': str(new_board), 'possible_moves': legal_moves}
-
-
-if __name__ == '__main__':
-
-    app.run(debug=True, host='0.0.0.0')
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0")
