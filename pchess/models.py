@@ -1,4 +1,5 @@
-from app import db
+from pchess import db
+
 
 class SingleGame(db.Model):
     __tablename__ = 'single_game'
