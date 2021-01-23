@@ -1,29 +1,9 @@
-"""
-Simple public chess game
-Display a board and collect votes for all possible moves
-every five minutes, execute the move with the most votes.
-If moves are tie, do a sudden death 2 minute run-off (??)
-after that, just choose randomly
-When a game ends in checkmate, at the next ten minute interval, start
-a brand new game.
-
-TODO:
-- how does straw polling work?
-    - need a database setup for this
-- how do scheduled events work?
-    - setup a celery/redis backend for this?
-
-database:
-GAME:
-board -> move -> move -> ...
-
-wish list:
-- user profiles, if a move you voted for is chosen, you get points
-- leader boards
-
-"""
+# Basic app runner for flask server
 
 from pchess import app
+from flask_socketio import SocketIO
 
 if __name__ == "__main__":
+    # socketio = SocketIO(app)
+    # socketio.run(app)
     app.run(debug=True, host="0.0.0.0")

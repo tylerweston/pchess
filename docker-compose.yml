@@ -1,0 +1,58 @@
+version: '3.7'
+
+services:
+  web:
+    build: ./pchess
+    command: python app.py -run h 0.0.0.0
+    volumes:
+      - .:/code
+    ports:
+      - 5000:5000
+#    links:
+#      - postgres:postgres
+    depends_on:
+      - redis
+      - db
+    env_file:
+      - ./.env.dev
+    networks:
+      - backend
+  # celery stuff!
+#  worker:
+#    build:
+#      context: ./pchess
+#      dockerfile: Dockerfile
+#    depends_on:
+#      - redis
+#      - web
+#    volumes: ['./pchess:/queue']
+#  monitor:
+#    build:
+#      context: ./pchess
+#      dockerfile: Dockerfile
+#    ports:
+#     - "5555:5555"
+#    entrypoint: flower
+#    command:  -A tasks --port=5555 --broker=redis://redis:6379/0
+#    depends_on:
+#      - redis
+#    volumes: ['./pchess:/queue']
+  redis:
+    image: "redis:alpine"
+  db:
+    restart: always
+    image: postgres:latest
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    env_file:
+      - ./.env.dev
+    networks:
+      - backend
+
+volumes:
+  postgres_data:
+
+networks:
+  backend:
