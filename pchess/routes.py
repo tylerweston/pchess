@@ -1,8 +1,29 @@
-from pchess import app, db, celery
+from pchess import app, db, celery, socketio
 from datetime import datetime
 from flask import request, render_template
 import chess
+from flask_socketio import SocketIO
 
+
+# Socketio stuff
+
+@socketio.on('json')
+def handle_json(json):
+    # Here we'll receive move vote in json format?
+    print('received json: ' + str(json))
+
+@socketio.on('my event')
+def handle_my_custom_event(json):
+    print('received json: ' + str(json))
+
+def some_function():
+    # We want to let a client know the remaining time on the countdown timer
+    # AND when a timer resets, we'll perform a move and let the front end clients
+    # know to reset their timers!
+    socketio.emit('some event', {'data': 42})
+
+
+# Flask routes
 
 @app.route("/new_task/<seconds>", methods=["POST"])
 def new_task(seconds):
@@ -14,8 +35,18 @@ def new_task(seconds):
 
 
 @app.route("/get_task_state/<task_id>", methods=["POST"])
-def get_tasl_state(task_id):
-    return celery.AsyncResult(task_id).status
+def get_task_state(task_id):
+    exec_time = celery.AsyncResult(task_id).date_done   # something like Tue, 26 Jan 2021 15:20:38 GMT
+    task_state = celery.AsyncResult(task_id).status
+    return {'exec_time': exec_time, 'task_state': task_state}
+
+def get_time_until_task_fires(task_id):
+    task = celery.AsyncResult(task_id)
+    # TODO: Check that task really exists
+    exec_time = task.date_done
+    dt_string = datetime.now().strftime("%d %m %Y %H:%M:%S")
+    # TODO: Make sure same timezone
+
 
 
 @celery.task(name='pchess.celery_test_task')
@@ -38,6 +69,9 @@ def create_new_game(game_name):
     return f"Create new game named {game_name}"
 
 
+# TODO: make vote endpoint EITHER POST or GET, POST will take a SINGLE vote
+#   where GET will return a count of ALL votes. Then we can use this service
+#   internally as well!
 @app.route("/get_vote/<vote>", methods=["POST"])
 def post_vote(vote):
     # Add this vote to the database
@@ -46,6 +80,7 @@ def post_vote(vote):
     # check that this user hasn't voted yet
     # if they have do we want to change their vote? or reject it?
     return f"You succesfully voted for {vote}"
+
 
 @app.route("/get_current_board")
 def get_current_board():
@@ -59,7 +94,6 @@ def get_current_board():
 
 def get_current_active_game():
     from pchess.models import Chessboard
-
     cur_board = Chessboard.query.all()[-1]
     if cur_board is None:
         return None
@@ -91,9 +125,11 @@ def make_move(move):
     # or something has been reached
     return f"Made move {move}"
 
+
 @app.route("/test_route")
 def test_route():
     return "This is only a test on changes to the code"
+
 
 @app.route("/")
 def main_page():

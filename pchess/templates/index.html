@@ -9,26 +9,37 @@
 
 {% block content %}
     <h1>pchess v0.01 - 2020 - Tyler Weston</h1>
-    <div id="myBoard" style="width: 400px">
+    {# need to insert a clock up here somewhere #}
+    {# need to center the chessboard #}
+
+    <div>Time left to vote <span id="time">1:00</span> seconds!</div>
+
+    <p>Chess board: </p>
+    <div id="myBoard" style="width: 400px"> {# This should be centered? Why isn't this css working #}
 
     </div>
+    {# display which sides turn it is to play #}
     <div class="container">
-        <p>Chess board: </p>
+
         <p>Legal moves:</p>
         <ul>
+        {# here, we want these to actually be links to vote? #}
+        {# and probably want the user to stay on the page, not load a new page or anything like that. #}
+        {# also, these should probably go in a nice grid or something like that instead of this gross #}
+        {# long list that they are in now #}
             {% for move in legal_moves %}
-            <li>{{move}}</li>
+                <li><a href="{{ url_for('make_move', move=move)}}">{{move}}</a></li>
             {% endfor %}
         </ul>
     </div>
-    // --- css for the chessboard
 
+    {# css for the chessboard #}
     <link rel="stylesheet"
       href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
       integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU"
       crossorigin="anonymous">
     <link rel="stylesheet" href="../static/css/pchess_local.css">
-    // --- jquery/chessboard.js --
+    {# jquery and chessboard libraries #}
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"
             integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD"
@@ -38,6 +49,39 @@
     var config = {pieceTheme: '/static/img/chesspieces/wikipedia/{piece}.png', position: {{board|tojson}}}
     var board = Chessboard('myBoard', config)
     // --- End Example JS ----------------------------------------------------------
+    </script>
+    {# Countdown time code from https://stackoverflow.com/questions/20618355/the-simplest-possible-javascript-countdown-timer #}
+    <script>
+    function startTimer(duration, display) {
+        var timer = duration, minutes, seconds;
+        setInterval(function () {
+            minutes = parseInt(timer / 60, 10);
+            seconds = parseInt(timer % 60, 10);
+
+            // minutes = minutes < 10 ? minutes : minutes;
+            seconds = seconds < 10 ? "0" + seconds : seconds;
+
+            display.text(minutes + ":" + seconds);
+
+            if (--timer < 0) {
+                timer = duration;
+            }
+        }, 1000);
+    }
+    {#  When this site loads, we want to get the time remaining from the server #}
+    jQuery(function ($) {
+        var oneMinute = 60,
+            display = $('#time');
+        startTimer(oneMinute, display);
+    });
+    </script>
+    {# Start up socketio for communicating with server #}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.0/socket.io.js" integrity="sha512-+l9L4lMTFNy3dEglQpprf7jQBhQsQ3/WvOnjaN/+/L4i0jOstgScV0q2TjfvRF4V+ZePMDuZYIQtg5T4MKr+MQ==" crossorigin="anonymous"></script>
+    <script type="text/javascript" charset="utf-8">
+        var socket = io();
+        socket.on('connect', function() {
+            socket.emit('my event', {data: 'I\'m connected!'});
+        });
     </script>
 {% endblock %}
 

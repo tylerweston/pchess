@@ -1,6 +1,7 @@
 #!/bin/bash
 # wait-for-postgres.sh
 
+# this is unused and will be removed
 set -e
 
 host="$1"

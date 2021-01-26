@@ -1,4 +1,4 @@
-version: '3.7'
+version: '3.8'
 
 services:
   web:
@@ -8,24 +8,26 @@ services:
       - .:/code
     ports:
       - 5000:5000
-#    links:
-#      - postgres:postgres
     depends_on:
       - redis
       - db
     env_file:
       - ./.env.dev
-    networks:
-      - backend
+
   # celery stuff!
-#  worker:
-#    build:
-#      context: ./pchess
-#      dockerfile: Dockerfile
-#    depends_on:
-#      - redis
-#      - web
-#    volumes: ['./pchess:/queue']
+  worker:
+    build:
+      context: ./pchess
+      dockerfile: Dockerfile
+    command: celery -A pchess.celery worker -P solo
+    links:
+      - redis
+    depends_on:
+      - redis
+    volumes:
+      - .:/code
+#    networks:
+#      - backend
 #  monitor:
 #    build:
 #      context: ./pchess
@@ -39,6 +41,9 @@ services:
 #    volumes: ['./pchess:/queue']
   redis:
     image: "redis:alpine"
+    ports:
+      - "6379:6379"
+
   db:
     restart: always
     image: postgres:latest
@@ -48,11 +53,9 @@ services:
       - "5432:5432"
     env_file:
       - ./.env.dev
-    networks:
-      - backend
 
 volumes:
   postgres_data:
 
-networks:
-  backend:
+#networks:
+#  backend:
