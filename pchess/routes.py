@@ -2,28 +2,41 @@ from pchess import app, db, celery, socketio
 from datetime import datetime
 from flask import request, render_template
 import chess
-from flask_socketio import SocketIO
 
 
-# Socketio stuff
+# Socket.io stuff
 
 @socketio.on('json')
 def handle_json(json):
     # Here we'll receive move vote in json format?
     print('received json: ' + str(json))
 
-@socketio.on('my event')
+
+@socketio.on('event')
 def handle_my_custom_event(json):
     print('received json: ' + str(json))
+
+@socketio.on('vote')
+def handle_vote(json):
+    print('receive vote: ' + str(json))
+
+def on_timer_expire():
+    socketio.emit('reset_time')
 
 def some_function():
     # We want to let a client know the remaining time on the countdown timer
     # AND when a timer resets, we'll perform a move and let the front end clients
     # know to reset their timers!
+    # This will send a message to ALL connected clients
     socketio.emit('some event', {'data': 42})
 
 
 # Flask routes
+@app.route("/reset", methods=["POST"])
+def reset_time():
+    on_timer_expire()
+    return "Time reset"
+
 
 @app.route("/new_task/<seconds>", methods=["POST"])
 def new_task(seconds):
@@ -40,13 +53,13 @@ def get_task_state(task_id):
     task_state = celery.AsyncResult(task_id).status
     return {'exec_time': exec_time, 'task_state': task_state}
 
+
 def get_time_until_task_fires(task_id):
     task = celery.AsyncResult(task_id)
     # TODO: Check that task really exists
     exec_time = task.date_done
     dt_string = datetime.now().strftime("%d %m %Y %H:%M:%S")
     # TODO: Make sure same timezone
-
 
 
 @celery.task(name='pchess.celery_test_task')
@@ -130,6 +143,13 @@ def make_move(move):
 def test_route():
     return "This is only a test on changes to the code"
 
+@app.route("/about")
+def about():
+    return "This is the about page"
+
+@app.route("/index")
+def index():
+    return main_page()
 
 @app.route("/")
 def main_page():

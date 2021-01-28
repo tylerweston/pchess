@@ -7,38 +7,41 @@
 </div>
 {% endblock %}
 
-{% block content %}
-    <h1>pchess v0.01 - 2020 - Tyler Weston</h1>
-    {# need to insert a clock up here somewhere #}
-    {# need to center the chessboard #}
-
-    <div>Time left to vote <span id="time">1:00</span> seconds!</div>
-
-    <p>Chess board: </p>
-    <div id="myBoard" style="width: 400px"> {# This should be centered? Why isn't this css working #}
-
-    </div>
-    {# display which sides turn it is to play #}
-    <div class="container">
-
-        <p>Legal moves:</p>
-        <ul>
-        {# here, we want these to actually be links to vote? #}
-        {# and probably want the user to stay on the page, not load a new page or anything like that. #}
-        {# also, these should probably go in a nice grid or something like that instead of this gross #}
-        {# long list that they are in now #}
-            {% for move in legal_moves %}
-                <li><a href="{{ url_for('make_move', move=move)}}">{{move}}</a></li>
-            {% endfor %}
-        </ul>
-    </div>
-
+{% block head %}
+    {{ super() }}
     {# css for the chessboard #}
     <link rel="stylesheet"
       href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
       integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU"
       crossorigin="anonymous">
     <link rel="stylesheet" href="../static/css/pchess_local.css">
+{% endblock %}
+
+{% block content %}
+    <h1>pchess v0.01</h1>
+
+    <div id="timer">Time left to vote <span id="time">1:00</span> seconds!</div>
+
+    <div id="myBoard" style="width: 400px"></div>
+    {# display which sides turn it is to play #}
+    <div class="container">
+
+        <p>Legal moves:</p>
+        {# here, we want these to actually be links to vote? #}
+        {# and probably want the user to stay on the page, not load a new page or anything like that. #}
+        {# also, these should probably go in a nice grid or something like that instead of this gross #}
+        {# long list that they are in now #}
+        <div id="moves">
+            {% for move in legal_moves %}
+                {# <li><a href="{{ url_for('make_move', move=move)}}">{{move}}</a></li>  #}
+                <input type="radio" id="{{ move }}" name="moves" value="{{ move }}">
+                <label for="{{ moves }}">{{ move }}</label><br>
+            {% endfor %}
+            <button {# onclick="onVote()" #} id="vote_button">Vote</button>
+        </div>
+    </div>
+
+
     {# jquery and chessboard libraries #}
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"
@@ -50,6 +53,20 @@
     var board = Chessboard('myBoard', config)
     // --- End Example JS ----------------------------------------------------------
     </script>
+{#    <script>#}
+{#    function onVote()#}
+{#    {#}
+{#        var selectedMove = "";#}
+{#        var selection = $('input[name=moves]:checked');#}
+{#        if (selection.length > 0)#}
+{#        {#}
+{#            // have a valid selection here#}
+{#            selectedMove = selection.val();#}
+{#            console.log("Selected move: " + selectedMove);#}
+{#            alert(selectedMove);#}
+{#        }#}
+{#    }#}
+{#    </script>#}
     {# Countdown time code from https://stackoverflow.com/questions/20618355/the-simplest-possible-javascript-countdown-timer #}
     <script>
     function startTimer(duration, display) {
@@ -80,9 +97,53 @@
     <script type="text/javascript" charset="utf-8">
         var socket = io();
         socket.on('connect', function() {
-            socket.emit('my event', {data: 'I\'m connected!'});
+            document.getElementById("vote_button").addEventListener("click",
+            function(){
+                console.log("clicked button");
+                var selectedMove = "";
+                var selection = $('input[name=moves]:checked');
+                if (selection.length > 0)
+                {
+                    // have a valid selection here
+                    selectedMove = selection.val();
+                    console.log("Selected move: " + selectedMove);
+                    socket.emit('vote', {data: selectedMove});
+                    // disable button and radio buttons for now
+                    document.getElementById("vote_button").disabled = true;
+                }
+
+            });
+            socket.emit('event', {data: 'connected'});
         });
+        socket.on('disconnect', function() {
+            socket.emit('event', {data: 'disconnected'});
+        });
+        socket.on('voted', function(){
+            onVote();
+        });
+
+        socket.on('reset_time', function(){
+            // this event is being received as expected
+            console.log("received reset event!");
+            $('moves').load('/');
+           // document.getElementById("vote_button").disabled = false;
+        });
+
+        {# This is how you handle receiving a message from the server #}
+        {# Possible messages we will receive are:
+            - Change in board position
+            - Check
+            - Checkmate
+            - Timer reset (Or is this packaged in with change of board position?)
+        #}
+        {# Messages we will emit:
+            - We vote on a move!
+        #}
+        {# socket.on('hello', (counter) => {#}
+        {#  $events.appendChild(newItem(`hello - ${counter}`));#}
+        {# }); #}
     </script>
+    <small>v0.01 - 2020 - Tyler Weston - Written in Python using the Flask framework</small>
 {% endblock %}
 
 
