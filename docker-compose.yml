@@ -26,6 +26,8 @@ services:
       - redis
     volumes:
       - .:/code
+    env_file:
+      - ./.env.dev
 #    networks:
 #      - backend
 #  monitor:

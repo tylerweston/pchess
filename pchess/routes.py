@@ -1,8 +1,12 @@
 from pchess import app, db, celery, socketio
 from datetime import datetime
 from flask import request, render_template
+from flask_socketio import SocketIO
 import chess
+from pchess.models import Vote
+from collections import Counter
 
+main_timer_id = None
 
 # Socket.io stuff
 
@@ -16,12 +20,30 @@ def handle_json(json):
 def handle_my_custom_event(json):
     print('received json: ' + str(json))
 
+
 @socketio.on('vote')
 def handle_vote(json):
+    this_vote = Vote(move=json['data'])
+    db.session.add(this_vote)
+    db.session.commit()
     print('receive vote: ' + str(json))
 
-def on_timer_expire():
-    socketio.emit('reset_time')
+
+def tell_client_timer_expire():
+    # socketio = SocketIO(message_queue='redis://redis:6379')
+    print("Telling clients the timer expired!")
+    # todo: we need to send new legal moves, and a new board position here
+    send_client_new_board_pos(get_current_board())
+    socketio.emit('reset_time', broadcast=True)
+
+
+@socketio.on('new_board_pos')
+def send_client_new_board_pos(new_board):
+    # socketio = SocketIO(message_queue='redis://redis:6379')
+    print("Sending new board to client:")
+    print(new_board)
+    socketio.emit('new_board_pos', str(new_board.fen()), broadcast=True)
+
 
 def some_function():
     # We want to let a client know the remaining time on the countdown timer
@@ -34,7 +56,9 @@ def some_function():
 # Flask routes
 @app.route("/reset", methods=["POST"])
 def reset_time():
-    on_timer_expire()
+    # this is a test route, TODO: Remove
+    # server_timer_expire()
+    tell_client_timer_expire()
     return "Time reset"
 
 
@@ -62,29 +86,48 @@ def get_time_until_task_fires(task_id):
     # TODO: Make sure same timezone
 
 
+@celery.task(name="pchess.timer")
+def main_timer():
+    with app.app_context():
+        print("Main timer going off!")
+        # send off timer expire function
+        server_timer_expire()
+        tell_client_timer_expire()
+        # start a new timer for sixty seconds from now
+        # we'll write this to a database
+        start_main_timer()
+
+
+def start_main_timer():
+    print("Starting a new timer")
+    main_timer_id = main_timer.apply_async(countdown=10)
+
+
 @celery.task(name='pchess.celery_test_task')
 def celery_test_task(time_created):
     dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     print(f"I'm a task that was created at {time_created} and I'm now firing at {dt_string}")
 
 
-@app.route("/new_game/<game_name>")
-def create_new_game(game_name):
+@app.route("/new_game")
+def create_new_game():
+    print("Creating a new game")
     from pchess.models import Chessboard, SingleGame
     # Create a new chessboard in the opening position
     board = Chessboard(board=chess.STARTING_BOARD_FEN)
     # Create a new game
-    game = SingleGame(name=game_name, boards=[board])
+    game = SingleGame(boards=[board])
     # Add the board and the game to our database
     db.session.add(board)
     db.session.add(game)
     db.session.commit()
-    return f"Create new game named {game_name}"
+    # make sure we have no votes left
+    clear_votes()
+    # Launch a new timer!
+    start_main_timer()
+    return f"Created a new game"
 
 
-# TODO: make vote endpoint EITHER POST or GET, POST will take a SINGLE vote
-#   where GET will return a count of ALL votes. Then we can use this service
-#   internally as well!
 @app.route("/get_vote/<vote>", methods=["POST"])
 def post_vote(vote):
     # Add this vote to the database
@@ -95,21 +138,24 @@ def post_vote(vote):
     return f"You succesfully voted for {vote}"
 
 
-@app.route("/get_current_board")
+# @app.route("/get_current_board")
+# def get_current_board():
+#     # returns a string representation of the currently active board
+#     board = get_current_active_game()
+#     if board is None:
+#         return "No current board"
+#     legal_moves = get_legal_moves(board)
+#     return {"board": str(board), "possible_moves": legal_moves}
+
+
 def get_current_board():
-    # returns a string representation of the currently active board
-    board = get_current_active_game()
-    if board is None:
-        return "No current board"
-    legal_moves = get_legal_moves(board)
-    return {"board": str(board), "possible_moves": legal_moves}
-
-
-def get_current_active_game():
     from pchess.models import Chessboard
-    cur_board = Chessboard.query.all()[-1]
-    if cur_board is None:
-        return None
+    cur_board = Chessboard.query.all()
+    if len(cur_board) > 0:
+        cur_board = cur_board[-1]
+    else:
+        create_new_game()
+        return get_current_board()
     board = chess.Board(cur_board.board)
     return board
 
@@ -125,7 +171,7 @@ def make_move(move):
     # grab the proper parent from our board as well!
     # so that way we can keep a series of boards organized into
     # their proper games!
-    curboard = get_current_active_game()
+    curboard = get_current_board()
     legal_moves = get_legal_moves(curboard)
     if move not in legal_moves: # should never happen since only legal moves are presented to users
         return "Invalid move!"
@@ -139,24 +185,61 @@ def make_move(move):
     return f"Made move {move}"
 
 
-@app.route("/test_route")
-def test_route():
-    return "This is only a test on changes to the code"
-
 @app.route("/about")
 def about():
-    return "This is the about page"
+    return "This will be the about page"
+
 
 @app.route("/index")
 def index():
     return main_page()
 
+
 @app.route("/")
 def main_page():
     # If we don't have a game yet, then we need to create one!
-    board = get_current_active_game()
+    board = get_current_board()
     board_str = board.fen()
     # we need to make sure that we get our board as .fen()
     legal_moves = get_legal_moves(board)
     print(f"Boad:{board_str}")
-    return render_template('index.html', board=board_str, legal_moves=legal_moves)
+    white_turn = board_str.split(' ')[1] == 'w'
+    return render_template('index.html', board=board_str, legal_moves=legal_moves, white_turn=white_turn)
+
+
+def server_timer_expire():
+    # pass
+    # count all votes
+    chosen_move = count_votes()
+    # remove old votes
+    clear_votes()
+    if len(chosen_move) > 0:
+        # make the chosen move happen
+        make_move(chosen_move[0])
+
+
+def count_votes():
+    # This counts the votes currently in the data base and returns the
+    # most voted for move, and the number of votes it received
+    print("Counting votes")
+    # with app.app_context():
+    all_votes = Vote.query.all()
+    # print([vote.move for vote in all_votes])
+    count = Counter([vote.move for vote in all_votes])
+    chosen_move = count.most_common(1)
+    if len(chosen_move) > 0:
+        chosen_move = chosen_move[0]
+    else:
+        print("No votes!")
+    print(chosen_move)
+    return chosen_move
+
+
+def clear_votes():
+    # remove all votes in the database and make way for new ones
+    # no need to store old votes
+    print("Clearing votes")
+    results = db.session.query(Vote)
+    if results:
+        results.delete()
+    db.session.commit()

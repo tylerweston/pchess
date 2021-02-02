@@ -26,6 +26,11 @@
     {# display which sides turn it is to play #}
     <div class="container">
 
+        {% if white_turn %}
+            <h2> White's turn</h2>
+        {%  else %}
+            <h2> Black's turn</h2>
+        {% endif %}
         <p>Legal moves:</p>
         {# here, we want these to actually be links to vote? #}
         {# and probably want the user to stay on the page, not load a new page or anything like that. #}
@@ -33,12 +38,11 @@
         {# long list that they are in now #}
         <div id="moves">
             {% for move in legal_moves %}
-                {# <li><a href="{{ url_for('make_move', move=move)}}">{{move}}</a></li>  #}
-                <input type="radio" id="{{ move }}" name="moves" value="{{ move }}">
-                <label for="{{ moves }}">{{ move }}</label><br>
+                <input type="radio" id="{{ move }}" name="moves" value="{{ move }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">
+                <label for="{{ moves }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">{{ move }}</label>
             {% endfor %}
-            <button {# onclick="onVote()" #} id="vote_button">Vote</button>
         </div>
+        <button id="vote_button">Vote</button>
     </div>
 
 
@@ -49,52 +53,76 @@
             crossorigin="anonymous"></script>
     <script>
     // --- Begin Example JS --------------------------------------------------------
-    var config = {pieceTheme: '/static/img/chesspieces/wikipedia/{piece}.png', position: {{board|tojson}}}
-    var board = Chessboard('myBoard', config)
+    var whiteSquareGrey = '#a9a9a9';
+    var blackSquareGrey = '#696969';
+    var config = {pieceTheme: '/static/img/chesspieces/wikipedia/{piece}.png', position: {{board|tojson}}};
+    var board = Chessboard('myBoard', config);
+    // grey square stuff from
+    // https://chessboardjs.com/examples#5003
     // --- End Example JS ----------------------------------------------------------
-    </script>
-{#    <script>#}
-{#    function onVote()#}
-{#    {#}
-{#        var selectedMove = "";#}
-{#        var selection = $('input[name=moves]:checked');#}
-{#        if (selection.length > 0)#}
-{#        {#}
-{#            // have a valid selection here#}
-{#            selectedMove = selection.val();#}
-{#            console.log("Selected move: " + selectedMove);#}
-{#            alert(selectedMove);#}
-{#        }#}
-{#    }#}
-{#    </script>#}
-    {# Countdown time code from https://stackoverflow.com/questions/20618355/the-simplest-possible-javascript-countdown-timer #}
-    <script>
-    function startTimer(duration, display) {
-        var timer = duration, minutes, seconds;
-        setInterval(function () {
-            minutes = parseInt(timer / 60, 10);
-            seconds = parseInt(timer % 60, 10);
-
-            // minutes = minutes < 10 ? minutes : minutes;
-            seconds = seconds < 10 ? "0" + seconds : seconds;
-
-            display.text(minutes + ":" + seconds);
-
-            if (--timer < 0) {
-                timer = duration;
-            }
-        }, 1000);
+    function removeGreySquares () {
+      $('#myBoard .square-55d63').css('background', '')
     }
-    {#  When this site loads, we want to get the time remaining from the server #}
-    jQuery(function ($) {
-        var oneMinute = 60,
-            display = $('#time');
-        startTimer(oneMinute, display);
-    });
+    function greySquare (square) {
+      var $square = $('#myBoard .square-' + square);
+
+      var background = whiteSquareGrey;
+      if ($square.hasClass('black-3c85d')) {
+        background = blackSquareGrey
+      }
+      $square.css('background', background)
+    }
     </script>
+
+    <script>
+    // deal with mousing over radio buttons
+    function mouseOver(a) {
+        greySquare(a.slice(0, 2));
+        greySquare(a.slice(2,4));
+    }
+
+    function mouseOff(a) {
+        removeGreySquares();
+    }
+
+    </script>
+
     {# Start up socketio for communicating with server #}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.0/socket.io.js" integrity="sha512-+l9L4lMTFNy3dEglQpprf7jQBhQsQ3/WvOnjaN/+/L4i0jOstgScV0q2TjfvRF4V+ZePMDuZYIQtg5T4MKr+MQ==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.0/socket.io.js"
+            integrity="sha512-+l9L4lMTFNy3dEglQpprf7jQBhQsQ3/WvOnjaN/+/L4i0jOstgScV0q2TjfvRF4V+ZePMDuZYIQtg5T4MKr+MQ=="
+            crossorigin="anonymous"></script>
     <script type="text/javascript" charset="utf-8">
+        {# javascript timer from #}
+        {# https://stackoverflow.com/questions/48466361/how-to-reset-javascript-minute-countdown-timer/48466526 #}
+        var timer;
+        function startTimer(duration, display) {
+            timer = duration;
+            var minutes, seconds;
+            setInterval(function () {
+                minutes = parseInt(timer / 60, 10);
+                seconds = parseInt(timer % 60, 10);
+
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                display.textContent = minutes + ":" + seconds;
+
+                if (--timer < 0) {
+                    timer = duration;
+                }
+            }, 1000);
+        }
+
+        function resetTimer() {
+          timer = 60;
+        }
+
+        window.onload = function () {
+            oneMinute = 60,
+                display = document.querySelector('#time');
+            startTimer(oneMinute, display);
+        };
+
         var socket = io();
         socket.on('connect', function() {
             document.getElementById("vote_button").addEventListener("click",
@@ -107,6 +135,8 @@
                     // have a valid selection here
                     selectedMove = selection.val();
                     console.log("Selected move: " + selectedMove);
+                    greySquare(selectedMove.slice(0, 2));
+                    greySquare(selectedMove.slice(2,4));
                     socket.emit('vote', {data: selectedMove});
                     // disable button and radio buttons for now
                     document.getElementById("vote_button").disabled = true;
@@ -122,11 +152,18 @@
             onVote();
         });
 
-        socket.on('reset_time', function(){
-            // this event is being received as expected
-            console.log("received reset event!");
-            $('moves').load('/');
-           // document.getElementById("vote_button").disabled = false;
+        socket.on('reset_time', () => {
+            // On reset, we remove grey squares, reload move list, reset game timer
+            // and allow the vote button to be used again
+            removeGreySquares();
+            $("#moves").load(location.href+" #moves>*","");
+            resetTimer();
+            document.getElementById("vote_button").disabled = false;
+        });
+
+        socket.on("new_board_pos", (new_board) => {
+            // animate the new board position
+            board.position(new_board);
         });
 
         {# This is how you handle receiving a message from the server #}
@@ -139,9 +176,7 @@
         {# Messages we will emit:
             - We vote on a move!
         #}
-        {# socket.on('hello', (counter) => {#}
-        {#  $events.appendChild(newItem(`hello - ${counter}`));#}
-        {# }); #}
+
     </script>
     <small>v0.01 - 2020 - Tyler Weston - Written in Python using the Flask framework</small>
 {% endblock %}
