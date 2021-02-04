@@ -15,6 +15,20 @@
   padding: 10px;
 }
 
+.movewrapper {
+  display: grid;
+  grid-template-columns: 60px 60px 60px;
+  gap: 3px;
+}
+
+#credits {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translate(-50%, -50%);
+  margin: 0 auto;
+}
+
 h1 {
   text-align: center;
 }
@@ -25,4 +39,8 @@ small {
 
 body {
   background-color: #B0B0B0;
+}
+
+label {
+  margin-right: 3px;
 }

@@ -18,7 +18,7 @@
 {% endblock %}
 
 {% block content %}
-    <h1>pchess v0.01</h1>
+    <h1>pchess</h1>
 
     <div id="timer">Time left to vote <span id="time">1:00</span> seconds!</div>
 
@@ -26,23 +26,40 @@
     {# display which sides turn it is to play #}
     <div class="container">
 
-        {% if white_turn %}
-            <h2> White's turn</h2>
-        {%  else %}
-            <h2> Black's turn</h2>
-        {% endif %}
-        <p>Legal moves:</p>
+
+
         {# here, we want these to actually be links to vote? #}
         {# and probably want the user to stay on the page, not load a new page or anything like that. #}
         {# also, these should probably go in a nice grid or something like that instead of this gross #}
         {# long list that they are in now #}
         <div id="moves">
-            {% for move in legal_moves %}
-                <input type="radio" id="{{ move }}" name="moves" value="{{ move }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">
-                <label for="{{ moves }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">{{ move }}</label>
-            {% endfor %}
+            {% if checkmate %}
+                <h3>CHECKMATE</h3><br>
+                <h4>New game starting soon</h4>
+            {% else %}
+                {% if white_turn %}
+                    <h2> White's turn</h2>
+                {%  else %}
+                    <h2> Black's turn</h2>
+                {% endif %}
+                {% if check %}
+                    <h2>CHECK</h2>
+                {% endif %}
+                <p>Legal moves:</p>
+                <div class="movewrapper">
+                {% for move in legal_moves %}
+                    <div>
+                        <input type="radio" id="{{ move }}" name="moves" value="{{ move }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">
+                        <label class="moveLabels" for="{{ moves }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">{{ move }}</label>
+                    </div>
+                {% endfor %}
+                </div>
+                {% if not checkmate %}
+                    <button id="vote_button" onclick="voteBind();">Vote</button>
+                {% endif %}
+            {% endif %}
+
         </div>
-        <button id="vote_button">Vote</button>
     </div>
 
 
@@ -52,14 +69,21 @@
             integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD"
             crossorigin="anonymous"></script>
     <script>
-    // --- Begin Example JS --------------------------------------------------------
+
     var whiteSquareGrey = '#a9a9a9';
     var blackSquareGrey = '#696969';
-    var config = {pieceTheme: '/static/img/chesspieces/wikipedia/{piece}.png', position: {{board|tojson}}};
+
+    var config = {pieceTheme: '/static/img/chesspieces/wikipedia/{piece}.png',
+        draggable: true,
+        onDragStart: onDragStart,
+        onDrop: onDrop,
+        onSnapEnd: onSnapEnd,
+        position: {{board|tojson}}};
+    var oldMove =  "";
     var board = Chessboard('myBoard', config);
     // grey square stuff from
     // https://chessboardjs.com/examples#5003
-    // --- End Example JS ----------------------------------------------------------
+
     function removeGreySquares () {
       $('#myBoard .square-55d63').css('background', '')
     }
@@ -72,9 +96,7 @@
       }
       $square.css('background', background)
     }
-    </script>
 
-    <script>
     // deal with mousing over radio buttons
     function mouseOver(a) {
         greySquare(a.slice(0, 2));
@@ -83,6 +105,58 @@
 
     function mouseOff(a) {
         removeGreySquares();
+    }
+
+    function onDragStart(source, piece, position, orientation)
+    {
+        console.log('Drag started:');
+        console.log('Source: ' + source);
+        console.log('Piece: ' + piece);
+        console.log('Position: ' + Chessboard.objToFen(position));
+        console.log('Orientation: ' + orientation);
+        console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+        if (oldMove !== "")
+        {
+            console.log("Undoing old move");
+            // undo old move
+            board.move(oldMove);
+        }
+    }
+
+    function onDrop (source, target, piece, newPos, oldPos, orientation) {
+        console.log('Source: ' + source);
+        console.log('Target: ' + target);
+        console.log('Piece: ' + piece);
+        console.log('New position: ' + Chessboard.objToFen(newPos));
+        console.log('Old position: ' + Chessboard.objToFen(oldPos));
+        console.log('Orientation: ' + orientation);
+        console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+        var targetMove = source.concat(target);
+        console.log("Target move: " + targetMove);
+        // get all moves
+        var allMoves = $(".moveLabels").map(function() {
+            return this.innerHTML;
+        }).get();
+
+        console.log(allMoves);
+        if (allMoves.includes(targetMove)) {
+
+            oldMove = targetMove.slice(2, ) + "-" + targetMove.slice(0, 2); // TODO: do all moves work like this?
+            // consider promotion: a7a8q
+            console.log("oldMove:" + oldMove);
+            console.log("You can make the move " + targetMove);
+            document.getElementById(targetMove).checked = true;
+        }
+        else {
+            // if this isn't a legal move
+            console.log("Move not allowed");
+            return 'snapback';
+        }
+    }
+
+    function onSnapEnd()
+    {
+
     }
 
     </script>
@@ -115,6 +189,24 @@
 
         function resetTimer() {
           timer = 60;
+          oldMove = "";
+        }
+
+        function voteBind() {
+            console.log("clicked button");
+            var selectedMove = "";
+            var selection = $('input[name=moves]:checked');
+            if (selection.length > 0)
+            {
+                // have a valid selection here
+                selectedMove = selection.val();
+                console.log("Selected move: " + selectedMove);
+                greySquare(selectedMove.slice(0, 2));
+                greySquare(selectedMove.slice(2,4));
+                socket.emit('vote', {data: selectedMove});
+                // disable button and radio buttons for now
+                document.getElementById("vote_button").disabled = true;
+            }
         }
 
         window.onload = function () {
@@ -124,27 +216,27 @@
         };
 
         var socket = io();
-        socket.on('connect', function() {
-            document.getElementById("vote_button").addEventListener("click",
-            function(){
-                console.log("clicked button");
-                var selectedMove = "";
-                var selection = $('input[name=moves]:checked');
-                if (selection.length > 0)
-                {
-                    // have a valid selection here
-                    selectedMove = selection.val();
-                    console.log("Selected move: " + selectedMove);
-                    greySquare(selectedMove.slice(0, 2));
-                    greySquare(selectedMove.slice(2,4));
-                    socket.emit('vote', {data: selectedMove});
-                    // disable button and radio buttons for now
-                    document.getElementById("vote_button").disabled = true;
-                }
-
-            });
-            socket.emit('event', {data: 'connected'});
-        });
+        {#socket.on('connect', function() {#}
+        {#    document.getElementById("vote_button").addEventListener("click",#}
+        {#    function(){#}
+        {#        console.log("clicked button");#}
+        {#        var selectedMove = "";#}
+        {#        var selection = $('input[name=moves]:checked');#}
+        {#        if (selection.length > 0)#}
+        {#        {#}
+        {#            // have a valid selection here#}
+        {#            selectedMove = selection.val();#}
+        {#            console.log("Selected move: " + selectedMove);#}
+        {#            greySquare(selectedMove.slice(0, 2));#}
+        {#            greySquare(selectedMove.slice(2,4));#}
+        {#            socket.emit('vote', {data: selectedMove});#}
+        {#            // disable button and radio buttons for now#}
+        {#            document.getElementById("vote_button").disabled = true;#}
+        {#        }#}
+        {##}
+        {#    });#}
+        {#    socket.emit('event', {data: 'connected'});#}
+        {# });#}
         socket.on('disconnect', function() {
             socket.emit('event', {data: 'disconnected'});
         });
@@ -178,7 +270,9 @@
         #}
 
     </script>
+    <div id="credits">
     <small>v0.01 - 2020 - Tyler Weston - Written in Python using the Flask framework</small>
+    </div>
 {% endblock %}
 
 

@@ -58,6 +58,3 @@ services:
 
 volumes:
   postgres_data:
-
-#networks:
-#  backend:
