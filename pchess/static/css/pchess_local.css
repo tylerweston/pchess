@@ -1,10 +1,10 @@
-#myBoard {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  /* bring your own prefixes */
-  transform: translate(-50%, -50%);
-}
+/*#myBoard {*/
+/*  position: fixed;*/
+/*  top: 50%;*/
+/*  left: 50%;*/
+/*  !* bring your own prefixes *!*/
+/*  transform: translate(-50%, -50%);*/
+/*}*/
 
 #timer {
   text-align: center;
@@ -38,7 +38,7 @@ small {
 }
 
 body {
-  background-color: #B0B0B0;
+  background-color: #E0E0E0;
 }
 
 label {

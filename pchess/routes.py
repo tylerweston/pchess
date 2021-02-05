@@ -3,7 +3,7 @@ from datetime import datetime
 from flask import request, render_template
 from flask_socketio import SocketIO
 import chess
-from pchess.models import Vote
+from pchess.models import Vote, Chessboard
 from collections import Counter
 
 main_timer_id = None
@@ -55,23 +55,22 @@ def main_timer(make_new_game):
 
 def start_main_timer(make_new_game):
     print("Starting a new timer")
-    main_timer_id = main_timer.apply_async(args=[make_new_game], countdown=10)
+    main_timer_id = main_timer.apply_async(args=[make_new_game], countdown=30)
 
 
 @app.route("/new_game")
 def create_new_game():
-    # print("Creating a new game")
-    from pchess.models import Chessboard, SingleGame
-
+    # Remove all boards in the database
+    clear_chessboards()
     # Create a new chessboard in the opening position
-    board = Chessboard(board=chess.STARTING_BOARD_FEN)
+    board = Chessboard(board=chess.STARTING_FEN)
     # Create a new game
-    game = SingleGame(
-        boards=[board]
-    )  # TODO: We don't actually do anything with the game?
+    # game = SingleGame(
+    #     boards=[board]
+    # )  # TODO: We don't actually do anything with the game?
     # Add the board and the game to our database
     db.session.add(board)
-    db.session.add(game)
+    # db.session.add(game)
     db.session.commit()
     # make sure we have no votes left
     clear_votes()
@@ -81,8 +80,6 @@ def create_new_game():
 
 
 def get_current_board():
-    from pchess.models import Chessboard
-
     cur_board = Chessboard.query.all()
     if len(cur_board) > 0:
         cur_board = cur_board[-1]
@@ -99,8 +96,6 @@ def get_legal_moves(board):
 
 @app.route("/make_move/<move>", methods=["POST"])
 def make_move(move):
-    from pchess.models import Chessboard
-
     # we want to get the current active board to make sure we can
     # grab the proper parent from our board as well!
     # so that way we can keep a series of boards organized into
@@ -150,9 +145,6 @@ def main_page():
         checkmate=checkmate,
     )
 
-# A FEN string (e.g., rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1) consists of the board part board_fen(),
-# the turn, the castling part (castling_rights), the en passant square (ep_square), the halfmove_clock and the fullmove_number.
-
 
 def check_mate_status():
     board = get_current_board()
@@ -188,6 +180,13 @@ def clear_votes():
     # remove all votes in the database and make way for new ones
     # no need to store old votes
     results = db.session.query(Vote)
+    if results:
+        results.delete()
+    db.session.commit()
+
+def clear_chessboards():
+    # Remove chessboards once we've finished a game
+    results = db.session.query(Chessboard)
     if results:
         results.delete()
     db.session.commit()

@@ -1,14 +1,10 @@
-{% extends "bootstrap/base.html" %}
-{% block title %}pchess{% endblock %}
-
-{% block navbar %}
-<div class="navbar navbar-fixed-top">
-  <!-- ... -->
-</div>
-{% endblock %}
+<title>pchess</title>
 
 {% block head %}
-    {{ super() }}
+    {#  bootstrap css #}
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+          crossorigin="anonymous">
     {# css for the chessboard #}
     <link rel="stylesheet"
       href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
@@ -17,17 +13,36 @@
     <link rel="stylesheet" href="../static/css/pchess_local.css">
 {% endblock %}
 
+{% block navbar %}
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <a class="navbar-brand" href="#">pchess</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarTogglerDemo02" aria-controls="navbarTogglerDemo02" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <div class="collapse navbar-collapse" id="navbarTogglerDemo02">
+    <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
+      <li class="nav-item active">
+        <a class="nav-link" href="/">Home <span class="sr-only">(current)</span></a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="/about">About</a>
+      </li>
+    </ul>
+  </div>
+</nav>
+{% endblock %}
+
+
+
 {% block content %}
-    <h1>pchess</h1>
 
-    <div id="timer">Time left to vote <span id="time">1:00</span> seconds!</div>
-
-    <div id="myBoard" style="width: 400px"></div>
+<div class="container">
+  <div class="row">
+    <div class="col-sm">
+    {# Left column #}
     {# display which sides turn it is to play #}
     <div class="container">
-
-
-
         {# here, we want these to actually be links to vote? #}
         {# and probably want the user to stay on the page, not load a new page or anything like that. #}
         {# also, these should probably go in a nice grid or something like that instead of this gross #}
@@ -55,12 +70,26 @@
                 {% endfor %}
                 </div>
                 {% if not checkmate %}
-                    <button id="vote_button" onclick="voteBind();">Vote</button>
+                    <button class="btn btn-primary" id="vote_button" onclick="voteBind();">Vote</button>
                 {% endif %}
             {% endif %}
 
         </div>
     </div>
+    </div>
+    <div class="col-sm">
+        <div id="timer">Time left to vote <span id="time">1:00</span> seconds!</div>
+
+        <div id="myBoard" style="width: 400px"></div>
+    </div>
+    <div class="col-sm">
+      One of three columns
+    </div>
+  </div>
+</div>
+
+
+
 
 
     {# jquery and chessboard libraries #}
@@ -68,6 +97,9 @@
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"
             integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD"
             crossorigin="anonymous"></script>
+    {# bootstrap js #}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
     <script>
 
     var whiteSquareGrey = '#a9a9a9';
@@ -109,47 +141,26 @@
 
     function onDragStart(source, piece, position, orientation)
     {
-        console.log('Drag started:');
-        console.log('Source: ' + source);
-        console.log('Piece: ' + piece);
-        console.log('Position: ' + Chessboard.objToFen(position));
-        console.log('Orientation: ' + orientation);
-        console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
         if (oldMove !== "")
         {
-            console.log("Undoing old move");
             // undo old move
             board.move(oldMove);
         }
     }
 
     function onDrop (source, target, piece, newPos, oldPos, orientation) {
-        console.log('Source: ' + source);
-        console.log('Target: ' + target);
-        console.log('Piece: ' + piece);
-        console.log('New position: ' + Chessboard.objToFen(newPos));
-        console.log('Old position: ' + Chessboard.objToFen(oldPos));
-        console.log('Orientation: ' + orientation);
-        console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
         var targetMove = source.concat(target);
-        console.log("Target move: " + targetMove);
         // get all moves
         var allMoves = $(".moveLabels").map(function() {
             return this.innerHTML;
         }).get();
-
-        console.log(allMoves);
         if (allMoves.includes(targetMove)) {
-
             oldMove = targetMove.slice(2, ) + "-" + targetMove.slice(0, 2); // TODO: do all moves work like this?
             // consider promotion: a7a8q
-            console.log("oldMove:" + oldMove);
-            console.log("You can make the move " + targetMove);
             document.getElementById(targetMove).checked = true;
         }
         else {
             // if this isn't a legal move
-            console.log("Move not allowed");
             return 'snapback';
         }
     }
@@ -188,7 +199,7 @@
         }
 
         function resetTimer() {
-          timer = 60;
+          timer = 30;
           oldMove = "";
         }
 
@@ -210,33 +221,12 @@
         }
 
         window.onload = function () {
-            oneMinute = 60,
+            initTime = 30,
                 display = document.querySelector('#time');
-            startTimer(oneMinute, display);
+            startTimer(initTime, display);
         };
 
         var socket = io();
-        {#socket.on('connect', function() {#}
-        {#    document.getElementById("vote_button").addEventListener("click",#}
-        {#    function(){#}
-        {#        console.log("clicked button");#}
-        {#        var selectedMove = "";#}
-        {#        var selection = $('input[name=moves]:checked');#}
-        {#        if (selection.length > 0)#}
-        {#        {#}
-        {#            // have a valid selection here#}
-        {#            selectedMove = selection.val();#}
-        {#            console.log("Selected move: " + selectedMove);#}
-        {#            greySquare(selectedMove.slice(0, 2));#}
-        {#            greySquare(selectedMove.slice(2,4));#}
-        {#            socket.emit('vote', {data: selectedMove});#}
-        {#            // disable button and radio buttons for now#}
-        {#            document.getElementById("vote_button").disabled = true;#}
-        {#        }#}
-        {##}
-        {#    });#}
-        {#    socket.emit('event', {data: 'connected'});#}
-        {# });#}
         socket.on('disconnect', function() {
             socket.emit('event', {data: 'disconnected'});
         });
@@ -257,18 +247,6 @@
             // animate the new board position
             board.position(new_board);
         });
-
-        {# This is how you handle receiving a message from the server #}
-        {# Possible messages we will receive are:
-            - Change in board position
-            - Check
-            - Checkmate
-            - Timer reset (Or is this packaged in with change of board position?)
-        #}
-        {# Messages we will emit:
-            - We vote on a move!
-        #}
-
     </script>
     <div id="credits">
     <small>v0.01 - 2020 - Tyler Weston - Written in Python using the Flask framework</small>
