@@ -1,12 +1,66 @@
 from pchess import app, db, celery, socketio
 from datetime import datetime
-from flask import request, render_template
-from flask_socketio import SocketIO
+from flask import render_template
+
+# from flask_socketio import SocketIO
 import chess
 from pchess.models import Vote, Chessboard
 from collections import Counter
+from random import choice
+import codecs
 
 main_timer_id = None
+punctuation = codecs.decode("!@#$%*&?", "rot_13")
+# Generated using internal tools, rot13 encoded naughty word list
+naughty_words = [
+    "ovgpu",
+    "phag",
+    "shpx",
+    "nff",
+    "avttre",
+    "xvxr",
+    "fcvp",
+    "xlxr",
+    "anttre",
+    "nahf",
+    "nany",
+    "puvax",
+    "pbpx",
+    "avttn",
+    "avtthu",
+    "qvxr",
+    "qlxr",
+    "snttbg",
+    "snt",
+    "tbbx",
+    "fuvg",
+]
+
+
+def parse_message(msg):
+    # take in a message and remove offensive words
+    # return the cleaned message
+    # use rot13 encoding so we don't have to store bad words
+    # as plain text
+    msg_encoded = codecs.encode(msg, "rot_13")
+    print(f"msg_encoded: {msg_encoded}")
+    for naughty_word in naughty_words:
+        if naughty_word in msg_encoded:
+            print(f"encoded naughty word: {naughty_word}")
+            new_word = "".join([choice(punctuation) for _ in naughty_word])
+            print(f"generated new word: {new_word}")
+            msg_encoded = msg_encoded.replace(naughty_word, new_word)
+            print(f"after replacement: {msg_encoded}")
+    return codecs.decode(msg_encoded, "rot_13")
+
+
+@socketio.on("speak")
+def handle_message(msg):
+    # Clean the message and send it off to all listeners
+    msg = msg["data"]
+    print(f"received message: {msg}")
+    clean_msg = parse_message(msg)
+    socketio.emit("new_message", clean_msg, broadcast=True)
 
 
 @socketio.on("vote")
@@ -91,6 +145,8 @@ def get_current_board():
 
 
 def get_legal_moves(board):
+    # TODO: Memoize these results so we only calculate it once
+    #   per board position!
     return [str(move) for move in board.legal_moves]
 
 
@@ -118,7 +174,9 @@ def make_move(move):
 
 @app.route("/about")
 def about():
-    return "This will be the about page"
+    return render_template(
+        "about.html",
+    )
 
 
 @app.route("/index")
@@ -128,12 +186,12 @@ def index():
 
 @app.route("/")
 def main_page():
-    # If we don't have a game yet, then we need to create one!
+    # Get the current board
     board = get_current_board()
+    # Parse status of the board to a FEN string
     board_str = board.fen()
-    # we need to make sure that we get our board as .fen()
+    # Generate the list of legal moves
     legal_moves = get_legal_moves(board)
-    print(f"Board:{board_str}")
     white_turn = board_str.split(" ")[1] == "w"
     check, checkmate = check_mate_status()
     return render_template(
@@ -183,6 +241,7 @@ def clear_votes():
     if results:
         results.delete()
     db.session.commit()
+
 
 def clear_chessboards():
     # Remove chessboards once we've finished a game

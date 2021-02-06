@@ -44,3 +44,19 @@ body {
 label {
   margin-right: 3px;
 }
+
+#chatbox {
+  text-align: left;
+  margin: 0 auto;
+  margin-bottom: 25px;
+  padding: 10px;
+  background: #fff;
+  height: 90%;
+  width: 90%;
+  border: 1px solid #a7a7a7;
+  overflow-y: scroll;
+  overflow-x: auto;
+  word-wrap: break-word;
+  border-radius: 4px;
+  border-bottom: 4px solid #a7a7a7;
+}

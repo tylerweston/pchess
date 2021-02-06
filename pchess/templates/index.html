@@ -14,83 +14,69 @@
 {% endblock %}
 
 {% block navbar %}
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
-  <a class="navbar-brand" href="#">pchess</a>
-  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarTogglerDemo02" aria-controls="navbarTogglerDemo02" aria-expanded="false" aria-label="Toggle navigation">
-    <span class="navbar-toggler-icon"></span>
-  </button>
-
-  <div class="collapse navbar-collapse" id="navbarTogglerDemo02">
-    <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
-      <li class="nav-item active">
-        <a class="nav-link" href="/">Home <span class="sr-only">(current)</span></a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="/about">About</a>
-      </li>
-    </ul>
-  </div>
-</nav>
+    {% include "nav.html" %}
 {% endblock %}
 
 
 
 {% block content %}
-
-<div class="container">
-  <div class="row">
-    <div class="col-sm">
-    {# Left column #}
-    {# display which sides turn it is to play #}
     <div class="container">
-        {# here, we want these to actually be links to vote? #}
-        {# and probably want the user to stay on the page, not load a new page or anything like that. #}
-        {# also, these should probably go in a nice grid or something like that instead of this gross #}
-        {# long list that they are in now #}
-        <div id="moves">
-            {% if checkmate %}
-                <h3>CHECKMATE</h3><br>
-                <h4>New game starting soon</h4>
-            {% else %}
-                {% if white_turn %}
-                    <h2> White's turn</h2>
-                {%  else %}
-                    <h2> Black's turn</h2>
-                {% endif %}
-                {% if check %}
-                    <h2>CHECK</h2>
-                {% endif %}
-                <p>Legal moves:</p>
-                <div class="movewrapper">
-                {% for move in legal_moves %}
-                    <div>
-                        <input type="radio" id="{{ move }}" name="moves" value="{{ move }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">
-                        <label class="moveLabels" for="{{ moves }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">{{ move }}</label>
-                    </div>
-                {% endfor %}
+      <div class="row">
+        <div class="col-sm">
+
+            {# Left column #}
+            {# Moves and move voting #}
+            <div class="container">
+                <div id="moves">
+                    {# If we have mate, inform the players, plus what side won! #}
+                    {% if checkmate %}
+                        <h3>CHECKMATE</h3><br>
+                        {# TODO: Which side won?! #}
+                        <h4>New game starting soon</h4>
+                    {% else %}
+                        {# display which sides turn it is to play #}
+                        {% if white_turn %}
+                            <h2> White's turn</h2>
+                        {%  else %}
+                            <h2> Black's turn</h2>
+                        {% endif %}
+                        {% if check %}
+                            <h2>CHECK</h2>
+                        {% endif %}
+                        <p>Legal moves:</p>
+                        <div class="movewrapper">
+                        {% for move in legal_moves %}
+                            <div>
+                                <input type="radio" id="{{ move }}" name="moves" value="{{ move }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">
+                                <label class="moveLabels" for="{{ moves }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">{{ move }}</label>
+                            </div>
+                        {% endfor %}
+                        </div>
+                        {% if not checkmate %}
+                            <button class="btn btn-primary" id="vote_button" onclick="voteBind();">Vote</button>
+                        {% endif %}
+                    {% endif %}
+
                 </div>
-                {% if not checkmate %}
-                    <button class="btn btn-primary" id="vote_button" onclick="voteBind();">Vote</button>
-                {% endif %}
-            {% endif %}
+            </div>
+        </div>
+        <div class="col-sm">
+            <div id="timer">Time to vote: <span id="time">...</span> seconds!</div>
+            <div id="myBoard" style="width: 400px"></div>
+        </div>
+
+        {# Right column, chat box #}
+        <div class="col-sm">
+
+            <ul id="chatbox"></ul>
+
+            <input name="user_msg" type="text" id="user_msg" autocomplete="off" maxlength="50" onkeyup="updateChars(this);"/>
+            <span id="charsTotal">0</span>/50
+            <button class="btn btn-primary" id="submit_button" onclick="submitMsg();">Submit</button>
 
         </div>
+      </div>
     </div>
-    </div>
-    <div class="col-sm">
-        <div id="timer">Time left to vote <span id="time">1:00</span> seconds!</div>
-
-        <div id="myBoard" style="width: 400px"></div>
-    </div>
-    <div class="col-sm">
-      One of three columns
-    </div>
-  </div>
-</div>
-
-
-
-
 
     {# jquery and chessboard libraries #}
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -98,10 +84,17 @@
             integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD"
             crossorigin="anonymous"></script>
     {# bootstrap js #}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+            integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+            crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+            integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+            crossorigin="anonymous"></script>
     <script>
 
+    var charSlot = document.querySelector('#charsTotal');
+    var msgBox = document.querySelector("#user_msg");
+    var chatBox = document.querySelector("#chatbox");
     var whiteSquareGrey = '#a9a9a9';
     var blackSquareGrey = '#696969';
 
@@ -111,8 +104,8 @@
         onDrop: onDrop,
         onSnapEnd: onSnapEnd,
         position: {{board|tojson}}};
-    var oldMove =  "";
     var board = Chessboard('myBoard', config);
+    var curBoard = {{board|tojson}};
     // grey square stuff from
     // https://chessboardjs.com/examples#5003
 
@@ -121,7 +114,6 @@
     }
     function greySquare (square) {
       var $square = $('#myBoard .square-' + square);
-
       var background = whiteSquareGrey;
       if ($square.hasClass('black-3c85d')) {
         background = blackSquareGrey
@@ -141,11 +133,8 @@
 
     function onDragStart(source, piece, position, orientation)
     {
-        if (oldMove !== "")
-        {
-            // undo old move
-            board.move(oldMove);
-        }
+        // Reset to the current board position
+        board.position(curBoard, false);
     }
 
     function onDrop (source, target, piece, newPos, oldPos, orientation) {
@@ -154,9 +143,8 @@
         var allMoves = $(".moveLabels").map(function() {
             return this.innerHTML;
         }).get();
+        // make sure the move we want to do is a legal move
         if (allMoves.includes(targetMove)) {
-            oldMove = targetMove.slice(2, ) + "-" + targetMove.slice(0, 2); // TODO: do all moves work like this?
-            // consider promotion: a7a8q
             document.getElementById(targetMove).checked = true;
         }
         else {
@@ -177,25 +165,41 @@
             integrity="sha512-+l9L4lMTFNy3dEglQpprf7jQBhQsQ3/WvOnjaN/+/L4i0jOstgScV0q2TjfvRF4V+ZePMDuZYIQtg5T4MKr+MQ=="
             crossorigin="anonymous"></script>
     <script type="text/javascript" charset="utf-8">
+
         {# javascript timer from #}
         {# https://stackoverflow.com/questions/48466361/how-to-reset-javascript-minute-countdown-timer/48466526 #}
         var timer;
+
         function startTimer(duration, display) {
             timer = duration;
             var minutes, seconds;
             setInterval(function () {
-                minutes = parseInt(timer / 60, 10);
+                {#minutes = parseInt(timer / 60, 10);#}
                 seconds = parseInt(timer % 60, 10);
 
-                minutes = minutes < 10 ? "0" + minutes : minutes;
+                {#minutes = minutes < 10 ? "0" + minutes : minutes;#}
                 seconds = seconds < 10 ? "0" + seconds : seconds;
 
-                display.textContent = minutes + ":" + seconds;
+                {#display.textContent = minutes + ":" + seconds;#}
+                display.textContent = seconds;
 
                 if (--timer < 0) {
                     timer = duration;
                 }
             }, 1000);
+        }
+
+        function submitMsg() {
+            console.log("click click");
+            console.log(msgBox.value);
+            submitMsgToServer(msgBox.value);
+            msgBox.value = "";
+            charSlot.textContent = "0";
+            return false;
+        }
+
+        function updateChars(val) {
+            charSlot.textContent = val.value.length;
         }
 
         function resetTimer() {
@@ -220,16 +224,24 @@
             }
         }
 
+        function submitMsgToServer(msg)
+        {
+            console.log("Submitting to server: " + msg);
+            socket.emit('speak', {data: msg});
+        }
+
         window.onload = function () {
-            initTime = 30,
-                display = document.querySelector('#time');
+            initTime = 30;
+            display = document.querySelector('#time');
             startTimer(initTime, display);
         };
 
         var socket = io();
+
         socket.on('disconnect', function() {
             socket.emit('event', {data: 'disconnected'});
         });
+
         socket.on('voted', function(){
             onVote();
         });
@@ -243,10 +255,19 @@
             document.getElementById("vote_button").disabled = false;
         });
 
+        socket.on('new_message', (msg) => {
+           console.log("Got message:" + msg);
+           var item = document.createElement('li');
+           item.textContent = ">" + msg;
+           chatBox.appendChild(item);
+        });
+
         socket.on("new_board_pos", (new_board) => {
             // animate the new board position
+            curBoard = new_board;
             board.position(new_board);
         });
+
     </script>
     <div id="credits">
     <small>v0.01 - 2020 - Tyler Weston - Written in Python using the Flask framework</small>
