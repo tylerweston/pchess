@@ -1,6 +1,8 @@
 <title>pchess</title>
 
 {% block head %}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     {#  bootstrap css #}
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
           integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
@@ -20,9 +22,9 @@
 
 
 {% block content %}
-    <div class="container">
+    <div class="container-fluid" style="height:100vh; padding: 20px;">
       <div class="row">
-        <div class="col-sm">
+        <div class="col-sm" align="center">
 
             {# Left column #}
             {# Moves and move voting #}
@@ -46,7 +48,7 @@
                         <p>Legal moves:</p>
                         <div class="movewrapper">
                         {% for move in legal_moves %}
-                            <div>
+                            <div id="movesList">
                                 <input type="radio" id="{{ move }}" name="moves" value="{{ move }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">
                                 <label class="moveLabels" for="{{ moves }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">{{ move }}</label>
                             </div>
@@ -60,13 +62,13 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm">
+        <div class="col-sm" align="center">
             <div id="timer">Time to vote: <span id="time">...</span> seconds!</div>
             <div id="myBoard" style="width: 400px"></div>
         </div>
 
         {# Right column, chat box #}
-        <div class="col-sm">
+        <div class="col-sm" align="center">
 
             <ul id="chatbox"></ul>
 
@@ -172,26 +174,26 @@
 
         function startTimer(duration, display) {
             timer = duration;
-            var minutes, seconds;
+            var seconds;
             setInterval(function () {
-                {#minutes = parseInt(timer / 60, 10);#}
                 seconds = parseInt(timer % 60, 10);
-
-                {#minutes = minutes < 10 ? "0" + minutes : minutes;#}
-                seconds = seconds < 10 ? "0" + seconds : seconds;
-
-                {#display.textContent = minutes + ":" + seconds;#}
+                {#seconds = seconds < 10 ? "0" + seconds : seconds;#}
                 display.textContent = seconds;
-
-                if (--timer < 0) {
-                    timer = duration;
-                }
+                --timer;
+                {#if (--timer < 0) {#}
+                {#    timer = duration;#}
+                {# }#}
             }, 1000);
         }
 
+        $("#user_msg").keypress(function(e){
+           if (e.which === 13)
+           {
+               submitMsg();
+           }
+        });
+
         function submitMsg() {
-            console.log("click click");
-            console.log(msgBox.value);
             submitMsgToServer(msgBox.value);
             msgBox.value = "";
             charSlot.textContent = "0";
@@ -204,7 +206,6 @@
 
         function resetTimer() {
           timer = 30;
-          oldMove = "";
         }
 
         function voteBind() {

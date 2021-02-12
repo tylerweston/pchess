@@ -1,6 +1,8 @@
 <title>about pchess</title>
 
 {% block head %}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     {#  bootstrap css #}
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
           integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
@@ -12,19 +14,24 @@
     {% include "nav.html" %}
 {% endblock %}
 
-
-
 {% block content %}
-    <h3>about pchess section</h3>
+    <div class="container">
+        <div class="jumbotron">
+            <h1>About pchess</h1>
+            <p>pchess was written because I wanted to learn about web-development, and I wanted to make a fun project while I did it.</p>
+            <p>The server is written in Python using the Flask microframework. It serves up websites that are written using the Jinja templating engine,
+            and use Bootstrap as well to make them look and act nicely. Communication between the front and back-end is done using SocketIO, and in particular
+            the Flask-SocketIO library written by Miguel Grinberg. </p>
+            <p>The database that stores the games is a PostgreSQL database. The clock is handled by Celery and Redis.</p>
+            <p>The whole thing is wrapped up nicely using some Docker containers and orchestrated using Docker Compose.</p>
+            <h2>Contact</h2>
+            <a href="mailto:&#116;&#121;&#108;&#101;&#114;&#106;&#111;&#104;&#110;&#119;&#101;&#115;&#116;&#111;&#110;&#064;&#103;&#109;&#097;&#105;&#108;&#046;&#099;&#111;&#109;?subject=pchess">
+            <p>tyler<!-- spam@protection.attempt -->johnwe<!-- spam@protection.attempt -->ston<!-- spam@protection.attempt -->@<!-- spam@protection.attempt -->gma<!-- spam@protection.attempt -->il.<!-- spam@protection.attempt -->com</p></a>
+        </div>
+    </div>
 
-
-
-
-    {# jquery and chessboard libraries #}
-    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"
-            integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD"
-            crossorigin="anonymous"></script>
     {# bootstrap js #}
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
     <div id="credits">

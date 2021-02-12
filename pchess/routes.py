@@ -4,13 +4,14 @@ from flask import render_template
 
 # from flask_socketio import SocketIO
 import chess
-from pchess.models import Vote, Chessboard
+from pchess.models import Vote, Chessboard, SingleGame, LegalMove
 from collections import Counter
 from random import choice
 import codecs
 
 main_timer_id = None
 punctuation = codecs.decode("!@#$%*&?", "rot_13")
+
 # Generated using internal tools, rot13 encoded naughty word list
 naughty_words = [
     "ovgpu",
@@ -43,14 +44,10 @@ def parse_message(msg):
     # use rot13 encoding so we don't have to store bad words
     # as plain text
     msg_encoded = codecs.encode(msg, "rot_13")
-    print(f"msg_encoded: {msg_encoded}")
     for naughty_word in naughty_words:
         if naughty_word in msg_encoded:
-            print(f"encoded naughty word: {naughty_word}")
             new_word = "".join([choice(punctuation) for _ in naughty_word])
-            print(f"generated new word: {new_word}")
             msg_encoded = msg_encoded.replace(naughty_word, new_word)
-            print(f"after replacement: {msg_encoded}")
     return codecs.decode(msg_encoded, "rot_13")
 
 
@@ -58,7 +55,6 @@ def parse_message(msg):
 def handle_message(msg):
     # Clean the message and send it off to all listeners
     msg = msg["data"]
-    print(f"received message: {msg}")
     clean_msg = parse_message(msg)
     socketio.emit("new_message", clean_msg, broadcast=True)
 
@@ -68,7 +64,6 @@ def handle_vote(json):
     this_vote = Vote(move=json["data"])
     db.session.add(this_vote)
     db.session.commit()
-    print("receive vote: " + str(json))
 
 
 def tell_client_timer_expire():
@@ -92,6 +87,8 @@ def get_time_until_task_fires(task_id):
 @celery.task(name="pchess.timer")
 def main_timer(make_new_game):
     with app.app_context():
+        # We shouldn't have to do this like this, it should happen on the NEXT
+        # time that the clock expires!
         if make_new_game:
             create_new_game()
         else:
@@ -109,25 +106,30 @@ def main_timer(make_new_game):
 
 def start_main_timer(make_new_game):
     print("Starting a new timer")
+    global main_timer_id
     main_timer_id = main_timer.apply_async(args=[make_new_game], countdown=30)
 
 
 @app.route("/new_game")
 def create_new_game():
+    print("Creating a new game")
     # Remove all boards in the database
     clear_chessboards()
     # Create a new chessboard in the opening position
     board = Chessboard(board=chess.STARTING_FEN)
     # Create a new game
-    # game = SingleGame(
-    #     boards=[board]
-    # )  # TODO: We don't actually do anything with the game?
+    game = SingleGame(
+        start_datetime=datetime.now()
+    )  # TODO: We don't actually do anything with the game?
     # Add the board and the game to our database
     db.session.add(board)
-    # db.session.add(game)
+    db.session.add(game)
     db.session.commit()
     # make sure we have no votes left
     clear_votes()
+    # generate legal moves for starting position
+    print("Generating legal moves in create_new_game")
+    generate_legal_moves_for_current_board()
     # Launch a new timer!
     start_main_timer(make_new_game=False)
     return f"Created a new game"
@@ -144,10 +146,32 @@ def get_current_board():
     return board
 
 
-def get_legal_moves(board):
-    # TODO: Memoize these results so we only calculate it once
-    #   per board position!
-    return [str(move) for move in board.legal_moves]
+def get_current_board_model():
+    cur_board = Chessboard.query.all()
+    if len(cur_board) > 0:
+        cur_board = cur_board[-1]
+    else:
+        # throw an error
+        raise Exception("Board not found")
+    return cur_board
+
+
+def get_legal_moves():
+    board = get_current_board_model()
+    moves = db.session.query(LegalMove, LegalMove.chessboard_id == board.id)
+    # TODO: check if moves is empty, then we have checkmate anyways?
+    return [m[0].move for m in moves]
+
+
+def generate_legal_moves_for_current_board():
+    clear_moves()
+    curboard = get_current_board()
+    curboardm = get_current_board_model()
+    legal_moves = [str(move) for move in curboard.legal_moves]
+    for move in legal_moves:
+        move = LegalMove(move=move, chessboard_id=curboardm.id)
+        db.session.add(move)
+    db.session.commit()
 
 
 @app.route("/make_move/<move>", methods=["POST"])
@@ -167,6 +191,7 @@ def make_move(move):
     board = Chessboard(board=curboard.fen())
     db.session.add(board)
     db.session.commit()
+    generate_legal_moves_for_current_board()
     # pack this up with a status flag that indicates if check or mate
     # or something has been reached
     return f"Made move {move}"
@@ -218,6 +243,8 @@ def server_timer_expire():
     if len(chosen_move) > 0:
         # make the chosen move happen
         make_move(chosen_move[0])
+    # Generate new moves for the current position
+    generate_legal_moves_for_current_board()
 
 
 def count_votes():
@@ -232,6 +259,13 @@ def count_votes():
     else:
         print("No votes!")
     return chosen_move
+
+
+def clear_moves():
+    results = db.session.query(LegalMove)
+    if results:
+        results.delete()
+    db.session.commit()
 
 
 def clear_votes():

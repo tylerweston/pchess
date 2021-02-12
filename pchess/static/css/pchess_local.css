@@ -1,24 +1,9 @@
-/*#myBoard {*/
-/*  position: fixed;*/
-/*  top: 50%;*/
-/*  left: 50%;*/
-/*  !* bring your own prefixes *!*/
-/*  transform: translate(-50%, -50%);*/
-/*}*/
-
-#timer {
-  text-align: center;
-  font-size: 14px;
-  margin: auto;
-  width: 50%;
-  border: 3px solid red;
-  padding: 10px;
-}
 
 .movewrapper {
   display: grid;
   grid-template-columns: 60px 60px 60px;
   gap: 3px;
+  justify-content: center;
 }
 
 #credits {

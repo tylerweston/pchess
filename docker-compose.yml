@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  web:
+  server:
     build: ./pchess
     command: python app.py -run h 0.0.0.0
     volumes:
