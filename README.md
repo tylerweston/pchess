@@ -1,16 +1,12 @@
 pchess v0.01
 Tyler Weston
 
-A democratic chess game. Vote on your favourite move and when the timer expires, the move with the most votes will get played!
-![Alt text](docs/MainPage1.png?raw=true "Screenshot")
+A democratic chess game. Vote on your favourite move and when the timer expires, the move with the most votes will get played!  
+  
+![Alt text](docs/pchessScreenShot.JPG)
 
 To play:  
 - You can either drag pieces to select a move, or vote using the radio buttons on the left.  
-
-Limitations:
-- Castling isn't implemented yet
-- The timer will be incorrect until the first reset message from the server
-- Right now, the timer is set to a very short 10 second interval, so the timer will reset at 0:50
 
 
 ### TODO: Test this  
