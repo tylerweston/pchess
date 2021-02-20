@@ -4,7 +4,7 @@ from flask import render_template
 
 # from flask_socketio import SocketIO
 import chess
-from pchess.models import Vote, Chessboard, SingleGame, LegalMove
+from pchess.models import Vote, Chessboard, LegalMove #, SingleGame
 from collections import Counter
 from random import choice
 import codecs
@@ -75,10 +75,8 @@ def tell_users_mate_status():
     stat = 0
     if check:
         stat = 1
-    if mate:
+    elif mate:
         stat = 2
-    if stat == 0:
-        return
     socketio.emit("mate_message", stat)
 
 
@@ -150,12 +148,12 @@ def create_new_game():
     # Create a new chessboard in the opening position
     board = Chessboard(board=chess.STARTING_FEN)
     # Create a new game
-    game = SingleGame(
-        start_datetime=datetime.now()
-    )  # TODO: We don't actually do anything with the game?
+    # game = SingleGame(
+    #     start_datetime=datetime.now()
+    # )  # TODO: We don't actually do anything with the game?
     # Add the board and the game to our database
     db.session.add(board)
-    db.session.add(game)
+    # db.session.add(game)
     db.session.commit()
     # make sure we have no votes left
     clear_votes()
@@ -206,6 +204,16 @@ def generate_legal_moves_for_current_board():
     db.session.commit()
 
 
+def add_random_votes():
+    # add 5 random votes into the vote pool
+    moves = get_legal_moves()
+    for _ in range(5):
+        vote = choice(moves)
+        this_vote = Vote(move=vote)
+        db.session.add(this_vote)
+    db.session.commit()
+
+
 def make_move(move):
     # we want to get the current active board to make sure we can
     # grab the proper parent from our board as well!
@@ -241,16 +249,16 @@ def main_page():
     # Parse status of the board to a FEN string
     board_str = board.fen()
     # Generate the list of legal moves
-    legal_moves = get_legal_moves()
-    white_turn = board_str.split(" ")[1] == "w"
-    check, checkmate = check_mate_status()
+    # legal_moves = get_legal_moves()
+    # white_turn = board_str.split(" ")[1] == "w"
+    # check, checkmate = check_mate_status()
     return render_template(
         "index.html",
         board=board_str,
-        legal_moves=legal_moves,
-        white_turn=white_turn,
-        check=check,
-        checkmate=checkmate,
+        # legal_moves=legal_moves,
+        # white_turn=white_turn,
+        # check=check,
+        # checkmate=checkmate,
     )
 
 
@@ -260,7 +268,6 @@ def check_mate_status():
 
 
 def server_timer_expire():
-    # pass
     # count all votes
     chosen_move = count_votes()
     # remove old votes
@@ -270,6 +277,8 @@ def server_timer_expire():
         make_move(chosen_move[0])
     # Generate new moves for the current position
     generate_legal_moves_for_current_board()
+    # For now, we'll just add some random votes to shake things up
+    add_random_votes()
 
 
 def count_votes():
