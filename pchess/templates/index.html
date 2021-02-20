@@ -22,48 +22,56 @@
 
 
 {% block content %}
+    <script> var team = (Math.floor(Math.random() * 2) === 0) ? 0 : 1; // TODO: Make this more consistent eventually, good for now</script>
     <div class="container-fluid" style="height:100vh; padding: 20px;">
       <div class="row">
         <div class="col-sm" align="center">
-
+            <h1>Your team: <div id="teamtext">...</div></h1>
             {# Left column #}
             {# Moves and move voting #}
+            {# Ok, let's do this a bit differently #}
+        {# we can do something like this? #}
+        {# but first, we'll have to clear the div! #}
+{#            function createInput(){#}
+{#                var $input = $('<input type="button" value="new button" />');#}
+{#                $input.appendTo($("body"));#}
+{#            }#}
             <div class="container">
                 <div id="moves">
+                {# TODO: This checkmate and whose turn it is needs to be updated programatically now #}
+                {# then we can take it out of the jinja rendering stuff #}
                     {# If we have mate, inform the players, plus what side won! #}
-                    {% if checkmate %}
-                        <h3>CHECKMATE</h3><br>
+                <div id="checkdiv"></div>
+                <div id="whoseturn"></div>
+{#                    {% if checkmate %}#}
+{#                        <h3>CHECKMATE</h3><br>#}
                         {# TODO: Which side won?! #}
-                        <h4>New game starting soon</h4>
-                    {% else %}
+{#                        <h4>New game starting soon</h4>#}
+{#                    {% else %}#}
                         {# display which sides turn it is to play #}
-                        {% if white_turn %}
-                            <h2> White's turn</h2>
-                        {%  else %}
-                            <h2> Black's turn</h2>
-                        {% endif %}
-                        {% if check %}
-                            <h2>CHECK</h2>
-                        {% endif %}
+{#                        {% if white_turn %}#}
+{#                            <h2> White's turn</h2>#}
+{#                        {%  else %}#}
+{#                            <h2> Black's turn</h2>#}
+{#                        {% endif %}#}
+{#                        {% if check %}#}
+{#                            <h2>CHECK</h2>#}
+{#                        {% endif %}#}
                         <p>Legal moves:</p>
-                        <div class="movewrapper">
-                        {% for move in legal_moves %}
-                            <div id="movesList">
-                                <input type="radio" id="{{ move }}" name="moves" value="{{ move }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">
-                                <label class="moveLabels" for="{{ moves }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">{{ move }}</label>
-                            </div>
-                        {% endfor %}
+                        <div id="movewrapper">
+                            {# This is where the moves will get populated #}
                         </div>
-                        {% if not checkmate %}
+{#                        {% if not checkmate %}#}
                             <button class="btn btn-primary" id="vote_button" onclick="voteBind();">Vote</button>
-                        {% endif %}
-                    {% endif %}
+{#                        {% endif %}#}
+{#                    {% endif %}#}
 
                 </div>
             </div>
         </div>
         <div class="col-sm" align="center">
-            <div id="timer">Time to vote: <span id="time">...</span> seconds!</div>
+            {# TODO: This should start as, WAITING FOR NEXT TURN #}
+            <div id="timer">Waiting for next turn!</div>
             <div id="myBoard" style="width: 400px"></div>
         </div>
 
@@ -80,11 +88,16 @@
       </div>
     </div>
 
+    {# Start of scripts and stuff goes here #}
+    {# Let's randomly assign this player to a team when the page loads and make sure #}
+    {# we only let them vote / see the moves for our team #}
+
     {# jquery and chessboard libraries #}
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"
             integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD"
             crossorigin="anonymous"></script>
+
     {# bootstrap js #}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
             integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
@@ -92,6 +105,7 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
             integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
             crossorigin="anonymous"></script>
+
     <script>
 
     var charSlot = document.querySelector('#charsTotal');
@@ -99,6 +113,7 @@
     var chatBox = document.querySelector("#chatbox");
     var whiteSquareGrey = '#a9a9a9';
     var blackSquareGrey = '#696969';
+    var cp;
 
     var config = {pieceTheme: '/static/img/chesspieces/wikipedia/{piece}.png',
         draggable: true,
@@ -135,6 +150,8 @@
 
     function onDragStart(source, piece, position, orientation)
     {
+        // TODO: If we've just grabbed the SAME PIECE that we were just moving,
+        //  we DON'T want to reset it to IT'S position.
         // Reset to the current board position
         board.position(curBoard, false);
     }
@@ -173,16 +190,14 @@
         var timer;
 
         function startTimer(duration, display) {
+            // TODO: This shouldn't start until first message from the server!
+            // TODO: We only want to run this function ONCE! after tat we just reset it!
             timer = duration;
             var seconds;
             setInterval(function () {
                 seconds = parseInt(timer % 60, 10);
-                {#seconds = seconds < 10 ? "0" + seconds : seconds;#}
                 display.textContent = seconds;
                 --timer;
-                {#if (--timer < 0) {#}
-                {#    timer = duration;#}
-                {# }#}
             }, 1000);
         }
 
@@ -203,20 +218,21 @@
         function updateChars(val) {
             charSlot.textContent = val.value.length;
         }
-
+        {#<div id="timer">Time to vote: <span id="time">...</span> seconds!</div>#}
         function resetTimer() {
+            $("#timer").html('<div id="timer">Time to vote: <span id="time">...</span> seconds!</div>');
           timer = 30;
+          display = document.querySelector('#time');
+          startTimer(timer, display);
         }
 
         function voteBind() {
-            console.log("clicked button");
             var selectedMove = "";
             var selection = $('input[name=moves]:checked');
             if (selection.length > 0)
             {
                 // have a valid selection here
                 selectedMove = selection.val();
-                console.log("Selected move: " + selectedMove);
                 greySquare(selectedMove.slice(0, 2));
                 greySquare(selectedMove.slice(2,4));
                 socket.emit('vote', {data: selectedMove});
@@ -227,15 +243,8 @@
 
         function submitMsgToServer(msg)
         {
-            console.log("Submitting to server: " + msg);
             socket.emit('speak', {data: msg});
         }
-
-        window.onload = function () {
-            initTime = 30;
-            display = document.querySelector('#time');
-            startTimer(initTime, display);
-        };
 
         var socket = io();
 
@@ -251,13 +260,28 @@
             // On reset, we remove grey squares, reload move list, reset game timer
             // and allow the vote button to be used again
             removeGreySquares();
-            $("#moves").load(location.href+" #moves>*","");
+            // $("#moves").load(location.href+" #moves>*","");
             resetTimer();
             document.getElementById("vote_button").disabled = false;
+            document.getElementById("teamtext").textContent = team ? "White" : "Black";
+            checkTurn();
+        });
+
+        socket.on('mate_message', (mate_state) => {
+            // mate_state = 1 => check
+            // mate_state = 2 => checkmate!
+            if (mate_state === 1)
+            {
+                $("#checkdiv").html("<h1>Check</h1>");
+            }
+            else if (mate_state === 2)
+            {
+                $("#checkdiv").html("<h1>Checkmate</h1>");
+                // have to do some more endgame stuff here
+            }
         });
 
         socket.on('new_message', (msg) => {
-           console.log("Got message:" + msg);
            var item = document.createElement('li');
            item.textContent = ">" + msg;
            chatBox.appendChild(item);
@@ -268,6 +292,56 @@
             curBoard = new_board;
             board.position(new_board);
         });
+
+        socket.on("legal_moves", (legal_moves) => {
+            // We have to check if we're the player thats playing now or not
+            // so we know if we populate this list or not!
+           $("#movewrapper").empty();
+           $.each(legal_moves, function(i, move) {
+               var buttonhtml = make_button(move);
+               $("#movewrapper").append(buttonhtml);
+            })
+        });
+
+        function make_button(move)
+        {
+            return  "<div><input type='radio' id ='" + move + "' name='moves' value='" + move + "' onmouseover=\"mouseOver('" +
+                    move + "')\" onmouseout=\"mouseOff('" + move + "')\">" +
+                    "<label class='moveLabels' id='" + move + "' for='" + move + "' onmouseover=\"mouseOver('" + move + "')\" " +
+                    "onmouseout=\"mouseOff('" + move + "')\">" + move + "</label></div>"
+        }
+/*
+<input type="radio" id="{{ move }}" name="moves" value="{{ move }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">
+<label class="moveLabels" id="{{ move }}" for="{{ moves }}" onmouseover="mouseOver('{{ move|safe }}')" onmouseout="mouseOff('{{ move|safe }}')">{{ move }}</label>
+
+ */
+        socket.on("cur_player", (player) => {
+            // this sends TRUE if it is white's turn, false otherwise
+                {#            <div id="checkdiv"></div>#}
+                {#<div id="whoseturn"></div>#}
+            console.log("received a cur_player message");
+            const players = player?"White":"Black";
+            $("#whoseturn").html("<h1>" + players + "s turn</h1>");
+            cp = player ? 1: 0;
+            // we might be able to do this here still and it might just not be working
+            // as expected? look into disabling buttons and whatnot in a different way?
+        });
+
+        function checkTurn() {
+            console.log("In checkTurn function");
+            if (cp === team)
+            {
+                console.log("Your turn!");
+                $("#movewrapper").children().prop('disabled', false);
+                $("#movebutton").prop("value", "Enabled!");
+            }
+            else
+            {
+                console.log("Other players turn!");
+                $("#movewrapper").children().prop('disabled', true);
+                $("#movebutton").prop("value", "Disabled!");
+            }
+        }
 
     </script>
     <div id="credits">

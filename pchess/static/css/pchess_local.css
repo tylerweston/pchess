@@ -1,5 +1,5 @@
 
-.movewrapper {
+#movewrapper {
   display: grid;
   grid-template-columns: 60px 60px 60px;
   gap: 3px;

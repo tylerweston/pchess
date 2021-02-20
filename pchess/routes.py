@@ -39,6 +39,8 @@ naughty_words = [
 
 
 def parse_message(msg):
+    # TODO: We should use some regex to beef this up so little tricks
+    #   like doubling up a letter won't slip through
     # take in a message and remove offensive words
     # return the cleaned message
     # use rot13 encoding so we don't have to store bad words
@@ -46,7 +48,8 @@ def parse_message(msg):
     msg_encoded = codecs.encode(msg, "rot_13")
     for naughty_word in naughty_words:
         if naughty_word in msg_encoded:
-            new_word = "".join([choice(punctuation) for _ in naughty_word])
+            bad_len = len(naughty_word)
+            new_word = "".join([naughty_word[0]] + [choice(punctuation) for _ in range(bad_len - 2)] + [naughty_word[-1]])
             msg_encoded = msg_encoded.replace(naughty_word, new_word)
     return codecs.decode(msg_encoded, "rot_13")
 
@@ -66,14 +69,43 @@ def handle_vote(json):
     db.session.commit()
 
 
+def tell_users_mate_status():
+    # board.is_check(), board.is_checkmate()
+    check, mate = check_mate_status()
+    stat = 0
+    if check:
+        stat = 1
+    if mate:
+        stat = 2
+    if stat == 0:
+        return
+    socketio.emit("mate_message", stat)
+
+
+def tell_users_current_player(board_str):
+    white_turn = board_str.split(" ")[1] == "w"
+    socketio.emit("cur_player", white_turn, broadcast=True)
+
+
 def tell_client_timer_expire():
-    send_client_new_board_pos(get_current_board())
+    board = get_current_board()
+    # Parse status of the board to a FEN string
+    board_str = board.fen()
+    send_client_new_board_pos(board)
+    tell_users_current_player(board_str)    # do this first
+    emit_legal_moves()
     socketio.emit("reset_time", broadcast=True)
+    tell_users_mate_status()
 
 
 @socketio.on("new_board_pos")
 def send_client_new_board_pos(new_board):
     socketio.emit("new_board_pos", str(new_board.fen()), broadcast=True)
+
+
+def emit_legal_moves():
+    legal_moves = get_legal_moves()
+    socketio.emit("legal_moves", legal_moves, broadcast=True)
 
 
 def get_time_until_task_fires(task_id):
@@ -87,7 +119,7 @@ def get_time_until_task_fires(task_id):
 @celery.task(name="pchess.timer")
 def main_timer(make_new_game):
     with app.app_context():
-        # We shouldn't have to do this like this, it should happen on the NEXT
+        # We shouldn't have to do this like this, it should happen on the NEXT??
         # time that the clock expires!
         if make_new_game:
             create_new_game()
@@ -174,27 +206,20 @@ def generate_legal_moves_for_current_board():
     db.session.commit()
 
 
-@app.route("/make_move/<move>", methods=["POST"])
 def make_move(move):
     # we want to get the current active board to make sure we can
     # grab the proper parent from our board as well!
     # so that way we can keep a series of boards organized into
     # their proper games!
     curboard = get_current_board()
-    legal_moves = get_legal_moves(curboard)
-    if (
-        move not in legal_moves
-    ):  # should never happen since only legal moves are presented to users
-        return "Invalid move!"
+    legal_moves = get_legal_moves()
     curboard.push_uci(move)
     # here we would look for check/mate?
     board = Chessboard(board=curboard.fen())
     db.session.add(board)
     db.session.commit()
     generate_legal_moves_for_current_board()
-    # pack this up with a status flag that indicates if check or mate
-    # or something has been reached
-    return f"Made move {move}"
+    return
 
 
 @app.route("/about")
@@ -216,7 +241,7 @@ def main_page():
     # Parse status of the board to a FEN string
     board_str = board.fen()
     # Generate the list of legal moves
-    legal_moves = get_legal_moves(board)
+    legal_moves = get_legal_moves()
     white_turn = board_str.split(" ")[1] == "w"
     check, checkmate = check_mate_status()
     return render_template(

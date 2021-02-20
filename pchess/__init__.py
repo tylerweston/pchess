@@ -8,6 +8,8 @@ from flask_socketio import SocketIO
 import os
 import pchess.celeryconfig
 
+import eventlet
+eventlet.monkey_patch()
 
 app = Flask(__name__)
 Bootstrap(app)
@@ -18,7 +20,7 @@ app.config[
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.app_context().push()
 
-socketio = SocketIO(app, message_queue='redis://redis:6379', async_mode='threading')
+socketio = SocketIO(app, message_queue='redis://redis:6379', async_mode='eventlet')
 
 # init db connection vis sqlalchemy
 db = SQLAlchemy(app)

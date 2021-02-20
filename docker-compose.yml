@@ -19,7 +19,7 @@ services:
     build:
       context: ./pchess
       dockerfile: Dockerfile
-    command: celery -A pchess.celery worker -P solo
+    command: celery -A pchess.celery worker -P eventlet
     links:
       - redis
     depends_on:
@@ -28,19 +28,7 @@ services:
       - .:/code
     env_file:
       - ./.env.dev
-#    networks:
-#      - backend
-#  monitor:
-#    build:
-#      context: ./pchess
-#      dockerfile: Dockerfile
-#    ports:
-#     - "5555:5555"
-#    entrypoint: flower
-#    command:  -A tasks --port=5555 --broker=redis://redis:6379/0
-#    depends_on:
-#      - redis
-#    volumes: ['./pchess:/queue']
+
   redis:
     image: "redis:alpine"
     ports:
