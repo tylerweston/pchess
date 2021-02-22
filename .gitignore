@@ -3,7 +3,10 @@
 database.ini
 venv/
 __pycache__/
-
+naughty_words.txt
+rot13util.py
+instructions
+migrations/
 
 # Created by https://www.toptal.com/developers/gitignore/api/jetbrains
 # Edit at https://www.toptal.com/developers/gitignore?templates=jetbrains

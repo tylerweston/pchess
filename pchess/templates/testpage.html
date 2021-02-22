@@ -1,4 +1,13 @@
-<title>pchess</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+</body>
+</html><title>pchess</title>
 
 {% block head %}
     <meta charset="utf-8">
@@ -138,7 +147,7 @@
         // make sure the move we want to do is a legal move
         if (allMoves.includes(targetMove))
         {
-            // Check if we've made a castling move
+            // TODO: If we made a castling move here, we also want to
             var split_fen = curBoard.split(" ");
             var castling_rights = split_fen[split_fen.length - 4];
             if (targetMove === "e1g1" && castling_rights.includes(("K")))
@@ -161,6 +170,13 @@
                 // make move h1f1
                 board.move("a8-d8");
             }
+
+
+
+            // we'll need to keep track of castling rights somewhere or else
+            // this won't work? does the board fen we get contain castling rights?
+
+            // move the corresponding rook or something
             document.getElementById(targetMove).checked = true;
         }
         else
@@ -336,7 +352,7 @@
             // this sends TRUE if it is white's turn, false otherwise
             const players = player?"White":"Black";
             $("#whoseturn").html("<h1>" + players + "s turn</h1>");
-            cp = player ? 1: 0;
+            cp = team;
         });
 
     </script>

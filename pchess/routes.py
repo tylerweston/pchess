@@ -9,6 +9,7 @@ from collections import Counter
 from random import choice
 import codecs
 
+TIMER_LENGTH = 20
 main_timer_id = None
 punctuation = codecs.decode("!@#$%*&?", "rot_13")
 
@@ -92,7 +93,7 @@ def tell_client_timer_expire():
     send_client_new_board_pos(board)
     tell_users_current_player(board_str)    # do this first
     emit_legal_moves()
-    socketio.emit("reset_time", broadcast=True)
+    socketio.emit("reset_time", TIMER_LENGTH, broadcast=True)
     tell_users_mate_status()
 
 
@@ -137,7 +138,7 @@ def main_timer(make_new_game):
 def start_main_timer(make_new_game):
     print("Starting a new timer")
     global main_timer_id
-    main_timer_id = main_timer.apply_async(args=[make_new_game], countdown=30)
+    main_timer_id = main_timer.apply_async(args=[make_new_game], countdown=TIMER_LENGTH)
 
 
 @app.route("/new_game")
@@ -181,7 +182,8 @@ def get_current_board_model():
     if len(cur_board) > 0:
         cur_board = cur_board[-1]
     else:
-        # throw an error
+        # throw an error?
+        # should we just make a new board ere?
         raise Exception("Board not found")
     return cur_board
 
@@ -189,7 +191,6 @@ def get_current_board_model():
 def get_legal_moves():
     board = get_current_board_model()
     moves = db.session.query(LegalMove, LegalMove.chessboard_id == board.id)
-    # TODO: check if moves is empty, then we have checkmate anyways?
     return [m[0].move for m in moves]
 
 
@@ -220,9 +221,7 @@ def make_move(move):
     # so that way we can keep a series of boards organized into
     # their proper games!
     curboard = get_current_board()
-    legal_moves = get_legal_moves()
     curboard.push_uci(move)
-    # here we would look for check/mate?
     board = Chessboard(board=curboard.fen())
     db.session.add(board)
     db.session.commit()
@@ -242,6 +241,18 @@ def index():
     return main_page()
 
 
+# @app.route("/admin")
+# def admin_page():
+#     # Get the current board
+#     board = get_current_board()
+#     # Parse status of the board to a FEN string
+#     board_str = board.fen()
+#     # Generate the list of legal moves
+#     return render_template(
+#         "testpage.html",
+#         board=board_str
+#     )
+
 @app.route("/")
 def main_page():
     # Get the current board
@@ -249,16 +260,9 @@ def main_page():
     # Parse status of the board to a FEN string
     board_str = board.fen()
     # Generate the list of legal moves
-    # legal_moves = get_legal_moves()
-    # white_turn = board_str.split(" ")[1] == "w"
-    # check, checkmate = check_mate_status()
     return render_template(
         "index.html",
-        board=board_str,
-        # legal_moves=legal_moves,
-        # white_turn=white_turn,
-        # check=check,
-        # checkmate=checkmate,
+        board=board_str
     )
 
 
@@ -285,13 +289,13 @@ def count_votes():
     # This counts the votes currently in the data base and returns the
     # most voted for move, and the number of votes it received
     all_votes = Vote.query.all()
-    # print([vote.move for vote in all_votes])
     count = Counter([vote.move for vote in all_votes])
     chosen_move = count.most_common(1)
     if len(chosen_move) > 0:
         chosen_move = chosen_move[0]
     else:
-        print("No votes!")
+        # if we didn't get any votes, just spin the wheels
+        pass
     return chosen_move
 
 

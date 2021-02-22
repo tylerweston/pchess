@@ -30,9 +30,9 @@ services:
       - ./.env.dev
 
   redis:
-    image: "redis:alpine"
+    image: redis:alpine
     ports:
-      - "6379:6379"
+      - 6379:6379
 
   db:
     restart: always
@@ -40,7 +40,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - 5432:5432
     env_file:
       - ./.env.dev
 
