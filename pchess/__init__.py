@@ -11,36 +11,38 @@ import pchess.celeryconfig
 import eventlet
 eventlet.monkey_patch()
 
-app = Flask(__name__)
-Bootstrap(app)
+application = Flask(__name__)
+Bootstrap(application)
 
-app.config[
+application.config[
     "SQLALCHEMY_DATABASE_URI"
 ] = os.getenv("DATABASE_URL")
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.app_context().push()
+application.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+application.app_context().push()
 
 # tell socketio to use eventlet and redis as our msg queue
-socketio = SocketIO(app, message_queue='redis://redis:6379', async_mode='eventlet')
+socketio = SocketIO(application, message_queue='redis://redis:6379', async_mode='eventlet')
 
 # init db connection vis sqlalchemy
-db = SQLAlchemy(app)
-db.init_app(app)
+db = SQLAlchemy(application)
+db.init_app(application)
 
 # init migration enginedoc
-migrate = Migrate(app, db)
+migrate = Migrate(application, db)
 
 # setup celery for our timed tasks
 celery = Celery()
-celery.app = app
+celery.app = application
 celery.config_from_object('pchess.celeryconfig')
+
+app = application
 
 from pchess import routes, models
 
 
 # create the DB on demand, is this a hack or is this a reasonable way
 # to do this?
-@app.before_first_request
+@application.before_first_request
 def create_tables():
     db.create_all()
 

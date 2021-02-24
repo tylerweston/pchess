@@ -1,4 +1,4 @@
-from pchess import app, db, celery, socketio
+from pchess import application, db, celery, socketio
 from datetime import datetime
 from flask import render_template
 
@@ -117,7 +117,7 @@ def get_time_until_task_fires(task_id):
 
 @celery.task(name="pchess.timer")
 def main_timer(make_new_game):
-    with app.app_context():
+    with application.app_context():
         # We shouldn't have to do this like this, it should happen on the NEXT??
         # time that the clock expires!
         if make_new_game:
@@ -136,14 +136,12 @@ def main_timer(make_new_game):
 
 
 def start_main_timer(make_new_game):
-    print("Starting a new timer")
     global main_timer_id
     main_timer_id = main_timer.apply_async(args=[make_new_game], countdown=TIMER_LENGTH)
 
 
-@app.route("/new_game")
+@application.route("/new_game")
 def create_new_game():
-    print("Creating a new game")
     # Remove all boards in the database
     clear_chessboards()
     # Create a new chessboard in the opening position
@@ -159,7 +157,6 @@ def create_new_game():
     # make sure we have no votes left
     clear_votes()
     # generate legal moves for starting position
-    print("Generating legal moves in create_new_game")
     generate_legal_moves_for_current_board()
     # Launch a new timer!
     start_main_timer(make_new_game=False)
@@ -229,14 +226,14 @@ def make_move(move):
     return
 
 
-@app.route("/about")
+@application.route("/about")
 def about():
     return render_template(
         "about.html",
     )
 
 
-@app.route("/index")
+@application.route("/index")
 def index():
     return main_page()
 
@@ -253,7 +250,7 @@ def index():
 #         board=board_str
 #     )
 
-@app.route("/")
+@application.route("/")
 def main_page():
     # Get the current board
     board = get_current_board()

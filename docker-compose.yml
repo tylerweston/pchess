@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  server:
+  web:
     build: ./pchess
-    command: python app.py -run h 0.0.0.0
+    command: python application.py -run h 0.0.0.0
     volumes:
       - .:/code
     ports:
@@ -30,7 +30,7 @@ services:
       - ./.env.dev
 
   redis:
-    image: redis:alpine
+    image: redis:latest
     ports:
       - 6379:6379
 
