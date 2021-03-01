@@ -21,7 +21,7 @@ application.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 application.app_context().push()
 
 # tell socketio to use eventlet and redis as our msg queue
-socketio = SocketIO(application, message_queue='redis://redis:6379', async_mode='eventlet')
+socketio = SocketIO(application, message_queue=os.getenv("REDIS_URL"), async_mode='eventlet') #'redis://redis:6379'
 
 # init db connection vis sqlalchemy
 db = SQLAlchemy(application)

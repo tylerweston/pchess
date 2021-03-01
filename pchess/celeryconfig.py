@@ -1,4 +1,4 @@
 # Celery and redis configuration
-
-broker_url = 'redis://redis:6379'
-result_backend = 'redis://redis:6379'
+import os
+broker_url = os.getenv("REDIS_URL")
+result_backend = os.getenv("REDIS_URL")
