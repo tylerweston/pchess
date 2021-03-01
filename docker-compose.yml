@@ -3,6 +3,7 @@ version: '3.8'
 services:
   web:
     build: ./pchess
+    # image: tylerweston/pchess:tagname
     command: python application.py -run h 0.0.0.0
     volumes:
       - .:/code
@@ -35,8 +36,12 @@ services:
       - 6379:6379
 
   db:
-    restart: always
+    # restart: always
     image: postgres:latest
+    # Do we need to persist this?
+    # Do we need to use a postgres db at all?
+    # Why not just store votes and board position in redis?
+    # Since we DON'T care about it between deployments!
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
