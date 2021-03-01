@@ -1,1 +1,1 @@
-web: gunicorn pchess:application
+web: gunicorn application:application
